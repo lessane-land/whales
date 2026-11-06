@@ -62,10 +62,9 @@
     var x = -10, tones = [0, 1, 2, 1, 3, 2, 4, 1, 0, 2, 3, 1, 2, 4, 0, 3];
     var i = 0;
     while (x < W + 10) {
-      var w = 6 + rnd() * 54;
-      if (rnd() < 0.18) w += 40;
+      var w = 4 + rnd() * 30;
       stripes.push({ x: x, w: w, tone: tones[i % tones.length], phase: rnd() * Math.PI * 2 });
-      x += w;
+      x += w + 10 + rnd() * 50;
       i++;
     }
   }
@@ -261,15 +260,15 @@
     ctx.fillRect(0, y0, W, y1 - y0);
     // Bands: each a vertical strip of its tone, strong near the surface and
     // sinking into the gradient by 900 m. Light tones fade sooner.
-    var fadeY = depthToY(1600), lightFadeY = depthToY(1100);
+    var fadeY = depthToY(700), lightFadeY = depthToY(520);
     stripes.forEach(function (st) {
       var sway = Math.sin(now / 13000 + st.phase) * 3;
       var c = mix(TONES[st.tone], [4, 10, 22], night * 0.6);
-      var top = st.tone <= 1 ? 0.5 : 0.42, far = st.tone <= 1 ? lightFadeY : fadeY;
+      var top = st.tone <= 1 ? 0.22 : 0.1, far = st.tone <= 1 ? lightFadeY : fadeY;
       var lg = ctx.createLinearGradient(0, sy, 0, far);
       lg.addColorStop(0, rgb(c, top * (1 - night * 0.5)));
-      lg.addColorStop(0.3, rgb(c, top * 0.55 * (1 - night * 0.5)));
-      lg.addColorStop(1, rgb(c, (st.tone <= 1 ? 0.05 : 0.14) * (1 - night * 0.5)));
+      lg.addColorStop(0.4, rgb(c, top * 0.5 * (1 - night * 0.5)));
+      lg.addColorStop(1, rgb(c, 0));
       ctx.fillStyle = lg;
       ctx.fillRect(st.x + sway, sy, st.w, Math.max(0, far - sy));
     });
@@ -439,7 +438,81 @@
     }
   };
 
+  // Beaked whales: a stout spindle, small head with a short beak, a small dorsal far back.
+  MESH.cuvier = {
+    facets: [
+      { p: [[-50, 2], [-44, -5], [-28, -10], [-30, 0]], s: 1 },
+      { p: [[-50, 2], [-30, 0], [-32, 8], [-44, 7]], s: 3 },
+      { p: [[-44, -5], [-28, -10], [-8, -12], [-12, -3]], s: 0 },
+      { p: [[-28, -10], [-12, -3], [-30, 0]], s: 2 },
+      { p: [[-8, -12], [16, -10], [12, -2], [-12, -3]], s: 1 },
+      { p: [[-30, 0], [-12, -3], [12, -2], [8, 9], [-14, 11], [-32, 8]], s: 2 },
+      { p: [[16, -10], [34, -6], [36, -11], [38, -5], [46, -2], [40, 3], [30, 6], [24, 1], [12, -2]], s: 0 },
+      { p: [[12, -2], [24, 1], [30, 6], [8, 9]], s: 3 },
+      { p: [[46, -2], [55, -12], [45, 0]], s: 1 },
+      { p: [[45, 0], [55, 12], [40, 3], [46, -2]], s: 3 },
+      { p: [[-24, 10], [-19, 16], [-10, 11]], s: 4 }
+    ],
+    eye: [-40, -1], box: 1.05
+  };
+  // Blainville's: like Cuvier's with the arched lower jaw and its two tusks.
+  MESH.blainville = {
+    facets: MESH.cuvier.facets.concat([{ p: [[-46, 6], [-40, 10], [-38, 4]], s: 5 }]),
+    eye: [-40, -1], box: 1.0
+  };
+  // Pilot whale: bulbous forehead, a wide sickle dorsal fin, near black.
+  MESH.pilot = {
+    facets: [
+      { p: [[-50, 0], [-48, -10], [-34, -12], [-32, -2]], s: 1 },
+      { p: [[-50, 0], [-32, -2], [-34, 8], [-46, 8]], s: 3 },
+      { p: [[-48, -10], [-34, -12], [-14, -9], [-18, -2], [-32, -2]], s: 0 },
+      { p: [[-14, -9], [-4, -9], [-2, -22], [10, -9], [26, -6], [20, 0], [-6, 0], [-18, -2]], s: 1 },
+      { p: [[-32, -2], [-18, -2], [-6, 0], [-4, 9], [-20, 10], [-34, 8]], s: 2 },
+      { p: [[20, 0], [26, -6], [44, -3], [42, 2], [30, 5], [12, 7], [-4, 9], [-6, 0]], s: 2 },
+      { p: [[44, -3], [54, -12], [45, 0]], s: 1 },
+      { p: [[45, 0], [54, 12], [42, 2], [44, -3]], s: 3 },
+      { p: [[-28, 9], [-20, 18], [-8, 10]], s: 4 }
+    ],
+    eye: [-42, -2], box: 0.95
+  };
+  // Beluga: white, round melon, no dorsal fin, a soft ridge instead.
+  MESH.beluga = {
+    facets: [
+      { p: [[-50, 2], [-47, -8], [-34, -12], [-32, -2]], s: 1 },
+      { p: [[-50, 2], [-32, -2], [-34, 8], [-46, 9]], s: 2 },
+      { p: [[-47, -8], [-34, -12], [-12, -11], [-16, -2], [-32, -2]], s: 0 },
+      { p: [[-12, -11], [14, -10], [10, -1], [-16, -2]], s: 1 },
+      { p: [[-32, -2], [-16, -2], [10, -1], [6, 9], [-18, 11], [-34, 8]], s: 2 },
+      { p: [[14, -10], [34, -6], [44, -3], [42, 2], [30, 6], [6, 9], [10, -1]], s: 1 },
+      { p: [[44, -3], [54, -12], [45, 0]], s: 0 },
+      { p: [[45, 0], [54, 12], [42, 2], [44, -3]], s: 2 },
+      { p: [[-26, 10], [-18, 18], [-8, 11]], s: 3 }
+    ],
+    eye: [-41, -3], box: 0.95
+  };
+  // Narwhal: mottled grey, no dorsal fin, and the tusk.
+  MESH.narwhal = {
+    facets: [
+      { p: [[-48, 1], [-45, -8], [-32, -11], [-30, -2]], s: 1 },
+      { p: [[-48, 1], [-30, -2], [-32, 8], [-44, 8]], s: 3 },
+      { p: [[-45, -8], [-32, -11], [-10, -10], [-14, -2], [-30, -2]], s: 0 },
+      { p: [[-10, -10], [14, -9], [10, -1], [-14, -2]], s: 1 },
+      { p: [[-30, -2], [-14, -2], [10, -1], [6, 9], [-16, 10], [-32, 8]], s: 2 },
+      { p: [[14, -9], [34, -5], [44, -3], [42, 2], [30, 6], [6, 9], [10, -1]], s: 2 },
+      { p: [[44, -3], [54, -12], [45, 0]], s: 1 },
+      { p: [[45, 0], [54, 12], [42, 2], [44, -3]], s: 3 },
+      { p: [[-24, 9], [-17, 17], [-8, 10]], s: 4 },
+      { p: [[-48, -1], [-96, -8], [-48, 2]], s: 5 }
+    ],
+    eye: [-40, -3], box: 0.95
+  };
+
   var SHADES = {
+    cuvier: { near: ["#8f8a7a", "#716c5e", "#5a5648", "#454236", "#302e26", "#302e26"], far: ["#6e7a7c", "#5b6668", "#4a5456", "#3a4345", "#2d3537", "#2d3537"] },
+    blainville: { near: ["#6f7d86", "#56646e", "#424f58", "#323d45", "#242c33", "#d8dde0"], far: ["#5c6e7c", "#4b5c69", "#3c4b57", "#2f3b46", "#252f38", "#c5ccd0"] },
+    pilot: { near: ["#2b3340", "#1f2630", "#161c24", "#0f131a", "#0a0d12", "#0a0d12"], far: ["#2a3a4e", "#223141", "#1b2735", "#151e2a", "#101720", "#101720"] },
+    beluga: { near: ["#f4f7f8", "#dfe7eb", "#c3d1d8", "#a7b9c3", "#8ea3ae", "#8ea3ae"], far: ["#d9e6ec", "#c4d5de", "#adc3ce", "#98b0bd", "#86a0ae", "#86a0ae"] },
+    narwhal: { near: ["#b9c2c6", "#949fa5", "#717c83", "#545d64", "#3b4349", "#e8ece9"], far: ["#a4b3bb", "#8a9aa3", "#71818b", "#5c6a74", "#4a565f", "#d4dbd9"] },
     sperm: { near: ["#2f5276", "#223f5e", "#182f49", "#102238", "#0a1729", "#0a1729"], far: ["#3d6487", "#2f5272", "#24425f", "#1b344d", "#142a40", "#142a40"] },
     blue:  { near: ["#8fb5cc", "#6c95b2", "#527a98", "#3d607c", "#2a475f", "#2a475f"], far: ["#8fb0c6", "#7199b3", "#5a8099", "#476882", "#36526a", "#36526a"] },
     fin:   { near: ["#6f8ea6", "#56758d", "#415c74", "#2f465b", "#223445", "#c9d6dd"], far: ["#7693a9", "#5f7c93", "#4b647a", "#3a5064", "#2c3f50", "#b9c8d2"] }
@@ -472,14 +545,14 @@
     }
   }
 
-  function drawWhale(x, y, pitch, scale, shade, alpha, kind, flat) {
+  function drawWhale(x, y, pitch, scale, shade, alpha, kind, flat, speed, phase) {
     var m = MESH[kind] || MESH.sperm;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
     ctx.rotate(pitch);
     ctx.scale(scale * m.box, scale * m.box);
-    drawMesh(kind, shade, flat ? 0 : 0.45, flat);
+    Whales.draw(ctx, kind, { shade: shade, t: performance.now(), speed: speed || 0, flat: flat, seam: 0.3, phase: phase || 0 });
     ctx.restore();
   }
 
@@ -567,7 +640,11 @@
     var hx = hero ? hero.x0 + Math.sin(now / 15000) * hero.drift : W / 2;
     var hy = hero ? depthToY(hero.cur) : H;
     var hs = HERO_W / 100 * (W < 720 ? 0.55 : Math.min(1, W / 1280)) * (1 + 0.2 * Math.min(1, (hero ? hero.cur : 0) / 1000)) * (hero && hero.kind === "blue" ? 1.15 : 1);
-    if (hero && hero.cur < 5) hy = sy + 13 * hs * (MESH[hero.kind] || MESH.sperm).box;
+    if (hero) {
+      // Keep the whole body under the surface line, whatever her angle.
+      var hb = (MESH[hero.kind] || MESH.sperm).box, reach = 55 * hs * hb * Math.abs(Math.sin(hero.pitch)) + 14 * hs * hb;
+      if (hy - reach < sy) hy = sy + reach;
+    }
 
     var far = whales.filter(function (w) { return w !== hero; })
       .sort(function (a, b) { return Math.abs(a.cur - camDepth) - Math.abs(b.cur - camDepth); }).slice(0, FAR_MAX);
@@ -578,12 +655,13 @@
       w.sx = x; w.sy = y;
       if (y < sy - 10 || y > H + 40) return;
       var ahead = depthAt(w, w.sec + 30) - w.cur;
-      var pitch = Math.max(-0.6, Math.min(0.6, ahead / 30 * 0.9));
+      var pitch = -Math.max(-0.7, Math.min(0.7, ahead / 30 * 1.1)) * Math.min(1, w.cur / 60);
       w.pitch += (pitch - w.pitch) * 0.04;
+      w.speed = Math.min(1, Math.abs(ahead) / 40);
       var scale = FAR_W / 100 * w.far * (W < 720 ? 0.8 : 1) * (w.kind === "blue" ? 1.35 : w.kind === "fin" ? 1.15 : 1);
       var sil = mix([10, 24, 44], [40, 90, 120], 1 - w.far);
       var flat = [rgb(sil), rgb(sil), rgb(sil), rgb(sil), rgb(sil), rgb(mix(sil, [200, 215, 225], 0.5))];
-      drawWhale(x, Math.max(sy + 8 * scale, y), w.pitch, scale, flat, 0.55 + 0.3 * w.far, w.kind, true);
+      drawWhale(x, Math.max(sy + 8 * scale, y), w.pitch, scale, flat, 0.55 + 0.3 * w.far, w.kind, true, w.speed, w.x0);
     });
 
     drawSquid(now);
@@ -594,10 +672,13 @@
 
     if (hero) {
       var ahead2 = depthAt(hero, hero.sec + 30) - hero.cur;
-      var pitch2 = Math.max(-0.85, Math.min(0.85, ahead2 / 30 * 1.4));
+      var pitch2 = -Math.max(-1.1, Math.min(1.1, ahead2 / 30 * 1.6));
+      // Near the surface she levels out, so her tail never leaves the water.
+      pitch2 *= Math.min(1, hero.cur / 140);
       hero.pitch += (pitch2 - hero.pitch) * 0.03;
+      hero.speed = Math.min(1, Math.abs(ahead2) / 40);
       drawTrail(hero, hx);
-      drawWhale(hx, hy, hero.pitch, hs, shadeOf(hero, true), 1, hero.kind);
+      drawWhale(hx, hy, hero.pitch, hs, shadeOf(hero, true), 1, hero.kind, false, hero.speed, 0);
       drawBlow(now, hx, sy, hs / (HERO_W / 100));
     }
 
@@ -631,8 +712,12 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#1b5a7e";
     ctx.fillRect(0, 0, W, H);
-    ["sperm", "blue", "fin"].forEach(function (k, i) {
-      drawWhale(W / 2, H * (0.2 + 0.3 * i), 0, Math.min(W, 1100) / 100 * 0.8, SHADES[k].near, 1, k);
+    var kinds = Whales.kinds(), cols = 2, rows = Math.ceil(kinds.length / cols);
+    kinds.forEach(function (k, i) {
+      var c = i % cols, r = Math.floor(i / cols);
+      drawWhale(W * (0.25 + 0.5 * c), H * ((r + 0.5) / rows), 0, (W / cols) / 100 * 0.7, SHADES[k].near, 1, k);
+      ctx.font = "14px " + sans; ctx.fillStyle = "#eaf4f7"; ctx.textAlign = "center";
+      ctx.fillText(k, W * (0.25 + 0.5 * c), H * ((r + 0.5) / rows) + 60);
     });
   }
 

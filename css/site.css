@@ -149,10 +149,26 @@ body.idle .species { opacity: 0; pointer-events: none; }
 
 .species { transition: opacity 1.4s; }
 
+.about-open { margin-top: 10px; pointer-events: auto; color: var(--foam); border-color: var(--line); background: var(--panel); }
+
+.about-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; padding-right: 80px; }
+
+.about-kinds .pill { font-size: 12px; padding: 4px 10px; }
+
+.about-kinds .pill.active { border-color: rgba(159, 212, 228, 0.95); background: rgba(159, 212, 228, 0.22); }
+
+.latin { margin: -8px 0 14px; font-style: italic; color: var(--foam-soft); }
+
+.about-list { margin: 0; }
+
+.about-list dt { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--foam-mute); margin-top: 10px; }
+
+.about-list dd { margin: 2px 0 0; }
+
 .hint {
   position: fixed;
   left: 16px;
-  bottom: max(64px, calc(env(safe-area-inset-bottom) + 48px));
+  top: calc(max(16px, env(safe-area-inset-top)) + 74px);
   margin: 0;
   max-width: 220px;
   font-size: 12.5px;
@@ -206,8 +222,17 @@ body.below .hint { color: var(--foam); }
 .muted { color: var(--foam-mute); }
 
 @media (max-width: 719px) {
+  .title { font-size: 26px; }
+  .tools { gap: 5px; }
+  .tools .pill { font-size: 12px; padding: 5px 9px; }
+  #full { display: none; }
+  .species { left: 0; right: 0; bottom: max(10px, env(safe-area-inset-bottom)); max-width: none; flex-wrap: nowrap; overflow-x: auto; padding: 0 16px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .species::-webkit-scrollbar { display: none; }
+  .species .pill { flex: 0 0 auto; }
+  .deep { bottom: max(56px, calc(env(safe-area-inset-bottom) + 46px)); }
   .deep-depth { font-size: 44px; }
   .deep-bio { display: none; }
+  .about-open { margin-top: 6px; font-size: 12px; padding: 4px 10px; }
   .deep-story { font-size: 15px; }
   .hint { display: none; }
 }
@@ -220,7 +245,7 @@ body.below .hint { color: var(--foam); }
   .deep-depth { font-size: 84px; }
   .deep-who { font-size: 22px; }
   .deep-story { font-size: 20px; }
-  .hint { left: 24px; bottom: 72px; }
+  .hint { left: 24px; top: 100px; }
   .species { left: 24px; bottom: 28px; }
   .sheet { align-items: center; }
   .sheet-body { border-bottom: 1px solid var(--line); border-radius: 18px; }

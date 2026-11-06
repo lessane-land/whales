@@ -47,6 +47,7 @@
     }
     if (slope > 0.25) {
       var rate = fmt(Math.round(slope * 60 / 5) * 5);
+      if ((hero.kind === "cuvier" || hero.kind === "blainville") && d < 400) return t("phase_quiet", { n: under });
       return d > 200 && !baleen ? t("phase_descend_dark", { rate: rate }) : t("phase_descend", { rate: rate, n: under });
     }
     if (slope < -0.25) return t("phase_ascend", { n: under });
@@ -58,12 +59,26 @@
   }
 
   function whoText(hero) {
-    var key = hero.kind === "blue" ? "whale_blue" : hero.kind === "fin" ? "whale_fin" : "whale";
+    var key = hero.kind && hero.kind !== "sperm" ? "whale_" + hero.kind : "whale";
     return t(key, { id: hero.id });
   }
 
+  var FACTS = { cuvier: "fact_beaked", blainville: "fact_beaked", pilot: "fact_pilot", beluga: "fact_beluga", narwhal: "fact_narwhal" };
+
   function bioText(w) {
     if (!w) return "";
+    if (w.kind === "narwhal") {
+      return t("bio_narwhal", { date: dateText(w.tagged), site: t("site_" + w.site), days: fmt(w.record_days), dives: fmt(w.record_dives), max: fmt(w.record_max), min: fmt(w.record_longest_min) }) + " " + t(FACTS[w.kind]);
+    }
+    if (w.site) {
+      var what = (w.sex === "m" ? t("sex_m") : w.sex === "f" ? t("sex_f") : t("whale_" + w.kind, { id: "" }).trim()) + (w.stage ? " " + t("stage_" + w.stage) : "");
+      var b = t("bio_toothed", { what: what, date: dateText(w.tagged), site: t("site_" + w.site), every: w.step >= 120 ? t("every_min", { n: fmt(Math.round(w.step / 60 * 2) / 2) }) : t("every_s", { n: fmt(w.step) }), days: fmt(w.record_days), max: fmt(w.record_max) });
+      if (w.record_longest_min) b += t("bio_toothed_long", { min: fmt(w.record_longest_min) });
+      if (w.mass_kg) b += t("bio_mass", { kg: fmt(w.mass_kg) });
+      b += t("bio_coarse");
+      if (FACTS[w.kind]) b += " " + t(FACTS[w.kind]);
+      return b;
+    }
     if (w.kind === "blue" || w.kind === "fin") {
       var parts = [t("bio_baleen", { sex: w.sex === "m" ? t("sex_m") : w.sex === "f" ? t("sex_f") : t("whale_" + w.kind, { id: "" }).trim(),
         date: dateText(w.tagged), days: fmt(w.record_days), dives: fmt(w.record_dives), lunges: fmt(w.record_lunges), max: fmt(w.record_max), min: fmt(w.record_longest_min) })];
@@ -104,6 +119,31 @@
       var ts = new Intl.DateTimeFormat(locale(), { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }).format(lt);
       document.getElementById("deep-sub").textContent = t("clock", { date: ds, time: ts });
     }
+  }
+
+  var aboutKind = null;
+  function renderAbout(kind) {
+    aboutKind = kind;
+    var nav = document.getElementById("about-kinds");
+    nav.innerHTML = "";
+    Sea.kinds().forEach(function (k) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "pill" + (k === kind ? " active" : "");
+      b.textContent = t("sp_" + k + "_name");
+      b.addEventListener("click", function () { renderAbout(k); });
+      nav.appendChild(b);
+    });
+    document.getElementById("about-name").textContent = t("sp_" + kind + "_name");
+    document.getElementById("about-latin").textContent = t("sp_" + kind + "_latin");
+    var dl = document.getElementById("about-list");
+    dl.innerHTML = "";
+    ["size", "weight", "lives", "dives", "eats", "sounds", "status"].forEach(function (f) {
+      var dt = document.createElement("dt"), dd = document.createElement("dd");
+      dt.textContent = t("sp_" + f);
+      dd.textContent = t("sp_" + kind + "_" + f);
+      dl.appendChild(dt); dl.appendChild(dd);
+    });
   }
 
   var chosenKind = null;
@@ -180,6 +220,12 @@
       document.getElementById("sound").textContent = t(on ? "sound_off" : "sound_on");
       document.getElementById("sound").classList.toggle("active", on);
     });
+    document.getElementById("about-open").addEventListener("click", function () {
+      renderAbout(lastHero ? lastHero.kind : "sperm");
+      document.getElementById("about").hidden = false;
+    });
+    document.getElementById("about-close").addEventListener("click", function () { document.getElementById("about").hidden = true; });
+    document.getElementById("about").addEventListener("click", function (e) { if (e.target === e.currentTarget) e.currentTarget.hidden = true; });
     document.getElementById("credits-open").addEventListener("click", function () {
       document.getElementById("credits").hidden = false;
     });

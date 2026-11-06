@@ -115,7 +115,23 @@
   }
 
   // Blue and fin whales: a moan so low a speaker cannot play it, pitched up here.
-  var nextMoan = 0;
+  var nextMoan = 0, nextWhistle = 0;
+  // Whistles and chirps: belugas most of all, pilot whales too, narwhals now and then.
+  function whistle(t, kind) {
+    var o = ac.createOscillator();
+    o.type = "sine";
+    var f0 = kind === "beluga" ? 1800 + Math.random() * 1400 : 1200 + Math.random() * 800;
+    var dur = kind === "beluga" ? 0.25 + Math.random() * 0.5 : 0.5 + Math.random() * 0.8;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.linearRampToValueAtTime(f0 * (0.6 + Math.random() * 0.9), t + dur);
+    var g = ac.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.12, t + 0.03);
+    g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.05);
+    if (kind === "beluga" && Math.random() < 0.5) whistleLater(t + dur + 0.08, kind);
+  }
+  function whistleLater(t, kind) { setTimeout(function () { if (on && ac) whistle(ac.currentTime, kind); }, Math.max(0, (t - ac.currentTime) * 1000)); }
   function moan(t, kind) {
     var o = ac.createOscillator();
     o.type = "sine";
@@ -174,7 +190,9 @@
     update: function (depth, slope, surfaced, kind) {
       if (!on || !ac) return;
       var t = ac.currentTime;
-      if (kind && kind !== "sperm") { baleen(t, depth, slope, surfaced, kind); return; }
+      if (kind === "blue" || kind === "fin") { baleen(t, depth, slope, surfaced, kind); return; }
+      var quiet = (kind === "cuvier" || kind === "blainville") && depth < 400;   // beaked whales keep silent near the surface
+      var chatty = kind === "beluga" || kind === "pilot" || kind === "narwhal";
       // The sea deepens with depth: lower, heavier.
       var k = Math.min(1, depth / 1200);
       seaFilter.frequency.setTargetAtTime(180 - 110 * k, t, 0.5);
@@ -192,7 +210,8 @@
       // Clicks: searching from 300 m down, about one a second. At the bottom, creaks.
       var searching = depth > 300;
       var atBottom = depth > 500 && Math.abs(slope) < 0.2;
-      if (!searching) { nextClick = 0; return; }
+      if (chatty && t > nextWhistle) { whistle(t, kind); nextWhistle = t + (kind === "beluga" ? 4 : 9) + Math.random() * 10; }
+      if (!searching || quiet) { nextClick = 0; return; }
       if (nextClick === 0) nextClick = t + 0.3;
       if (atBottom && t > nextCreak && t > creakUntil) {
         creakUntil = t + 1.2 + Math.random() * 1.4;
