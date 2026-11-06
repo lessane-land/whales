@@ -18,7 +18,7 @@ import io
 import json
 import zipfile
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 STEP = 10               # seconds per point
 WINDOW_HOURS = 24
@@ -94,8 +94,22 @@ def main():
             elif dep <= DIVE_DEPTH and cur is not None:
                 dives.append({"t": cur[0] * STEP, "dur": (k - cur[0]) * STEP, "max": cur[1]})
                 cur = None
+        # Whole-record stats, for her background: every dive deeper than DIVE_DEPTH.
+        rec_dives, cur_d, longest, deepest_d = 0, None, 0, 0
+        for sec, dep in pts:
+            deepest_d = max(deepest_d, dep)
+            if dep > DIVE_DEPTH and cur_d is None:
+                cur_d = sec
+            elif dep <= DIVE_DEPTH and cur_d is not None:
+                rec_dives += 1
+                longest = max(longest, sec - cur_d)
+                cur_d = None
         r = ref.get(wid, {})
         whales.append({
+            "record_days": round(total / 86400, 1),
+            "record_dives": rec_dives,
+            "record_max": round(deepest_d),
+            "record_longest_min": round(longest / 60),
             "id": wid,
             "species": "Physeter macrocephalus",
             "tagged": (r.get("deploy-on-date") or "")[:10] or None,
@@ -103,8 +117,8 @@ def main():
             "sex": r.get("animal-sex") or None,
             "lat": round(float(r["deploy-on-latitude"]), 2) if r.get("deploy-on-latitude") else None,
             "lon": round(float(r["deploy-on-longitude"]), 2) if r.get("deploy-on-longitude") else None,
-            "window_start": (first[wid]).strftime("%Y-%m-%d") if wid in first else None,
-            "window_offset": start,
+            "window_start": (first[wid] + timedelta(seconds=start)).strftime("%Y-%m-%dT%H:%M:%S") if wid in first else None,
+            "utc_offset": -7,
             "step": STEP,
             "max": max(depth),
             "record_hours": round(total / 3600, 1),

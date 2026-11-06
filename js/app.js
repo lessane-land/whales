@@ -3,7 +3,7 @@
 
   var DATA_URL = "data/whales.json";
   var lang = pickLang();
-  var data = null;
+  var data = null, byId = {};
 
   function pickLang() {
     try {
@@ -20,47 +20,78 @@
   }
 
   function locale() { return lang === "es" ? "es-ES" : "en-GB"; }
-
   function fmt(n) { return new Intl.NumberFormat(locale(), { maximumFractionDigits: 0 }).format(n); }
 
   function applyStatic() {
     document.documentElement.lang = lang;
     document.querySelectorAll("[data-i18n]").forEach(function (el) { el.textContent = t(el.dataset.i18n); });
     document.getElementById("lang").textContent = t("lang_switch");
+    lastKey = "";
   }
 
-  function whenText(w) {
-    if (!w.tagged) return "";
-    var d = new Date(w.tagged + "T12:00:00Z");
-    return new Intl.DateTimeFormat(locale(), { month: "long", year: "numeric", timeZone: "UTC" }).format(d);
+  function dateText(iso) {
+    var d = new Date(iso + "T12:00:00Z");
+    return new Intl.DateTimeFormat(locale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(d);
   }
 
-  var lastShown = null, lastDepth = -1, wasDeep = null;
-  function onTick(deepest, whales, surfaceY) {
-    var deep = surfaceY < 70;
-    if (deep !== wasDeep) { wasDeep = deep; document.body.classList.toggle("below", deep); }
-    if (!deepest) return;
-    var d = Math.round(deepest.cur / 5) * 5;
-    if (deepest === lastShown && d === lastDepth) return;
-    lastShown = deepest;
-    lastDepth = d;
-    var w = data.whales.filter(function (x) { return x.id === deepest.id; })[0];
+  // The story line: what she is doing right now, from the measured numbers.
+  function storyLine(hero, info) {
+    var under = Math.round(Sea.underFor(hero) / 60);
+    var d = hero.cur, slope = info.slope;   // metres per second, positive going down
+    if (d < 25) {
+      var up = Math.round(Sea.surfaceFor(hero) / 60);
+      return up >= 1 ? t("phase_surface", { n: up }) : t("phase_surface_short");
+    }
+    if (slope > 0.25) {
+      var rate = fmt(Math.round(slope * 60 / 5) * 5);
+      return d > 200 ? t("phase_descend_dark", { rate: rate }) : t("phase_descend", { rate: rate, n: under });
+    }
+    if (slope < -0.25) return t("phase_ascend", { n: under });
+    return t("phase_bottom", { d: fmt(Math.round(d / 10) * 10), n: under });
+  }
+
+  var lastKey = "", wasBelow = null, lastHero = null, hintUntil = 0;
+  function onTick(hero, whales, surfaceY, info) {
+    var below = surfaceY < 70 || (info && info.night > 0.5);
+    if (below !== wasBelow) { wasBelow = below; document.body.classList.toggle("below", below); }
+    if (!hero) return;
+    var w = byId[hero.id];
+    if (hero !== lastHero) {
+      lastHero = hero;
+      document.getElementById("deep-bio").textContent = w ? t("bio", {
+        date: dateText(w.tagged), days: fmt(w.record_days), dives: fmt(w.record_dives), max: fmt(w.record_max), min: fmt(w.record_longest_min)
+      }) : "";
+    }
+    var d = Math.round(hero.cur / 5) * 5;
+    var lt = Sea.localTime(hero);
+    var key = hero.id + ":" + d + ":" + (lt ? Math.floor(lt.getTime() / 60000) : 0);
+    if (key === lastKey) return;
+    lastKey = key;
     document.getElementById("deep-depth").textContent = t("depth_m", { n: fmt(d) });
-    var under = Sea.underFor(deepest);
-    document.getElementById("deep-who").textContent = t("whale", { id: deepest.id }) + " · " +
-      (under > 60 ? t("under", { n: Math.round(under / 60) }) : t("at_surface"));
-    document.getElementById("deep-sub").textContent = t("where_when", { when: whenText(w) }) + " · " + t("speed", { x: Sea.speed });
+    document.getElementById("deep-who").textContent = t("whale", { id: hero.id });
+    document.getElementById("deep-story").textContent = storyLine(hero, info);
+    if (lt) {
+      var ds = new Intl.DateTimeFormat(locale(), { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(lt);
+      var ts = new Intl.DateTimeFormat(locale(), { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }).format(lt);
+      document.getElementById("deep-sub").textContent = t("clock", { date: ds, time: ts });
+    }
   }
 
   function start() {
     applyStatic();
     fetch(DATA_URL, { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (d) {
       data = d;
+      d.whales.forEach(function (w) { byId[w.id] = w; });
+      var q = new URLSearchParams(location.search);
       Sea.init(document.getElementById("sea"), d, {
+        whale: q.get("whale"), at: q.has("at") ? parseFloat(q.get("at")) : undefined,
         onTick: onTick,
-        tick: function (m) { return t("tick", { n: fmt(m) }); },
-        label: function (depth, w) { return w.id + " · " + t("depth_m", { n: fmt(Math.round(depth)) }); }
+        tick: function (m) { return t("tick", { n: fmt(m) }); }
       });
+      var hint = document.getElementById("hint");
+      hint.textContent = t("hint");
+      hint.hidden = false;
+      setTimeout(function () { hint.classList.add("gone"); }, 9000);
       document.addEventListener("visibilitychange", function () {
         if (document.hidden) Sea.pause(); else Sea.resume();
       });
@@ -69,8 +100,9 @@
     document.getElementById("lang").addEventListener("click", function () {
       lang = lang === "es" ? "en" : "es";
       try { localStorage.setItem("lang", lang); } catch (e) { /* private mode */ }
-      lastDepth = -1;
+      lastHero = null;
       applyStatic();
+      document.getElementById("hint").textContent = t("hint");
     });
     document.getElementById("credits-open").addEventListener("click", function () {
       document.getElementById("credits").hidden = false;
