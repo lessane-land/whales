@@ -39,9 +39,9 @@
 
   // The story line: what she is doing right now, from the measured numbers.
   function storyLine(hero, info) {
-    var under = Math.round(Sea.underFor(hero) / 60);
+    var under = Math.max(1, Math.round(Sea.underFor(hero) / 60));
     var d = hero.cur, slope = info.slope;   // metres per second, positive going down
-    var baleen = hero.kind !== "sperm";
+    var baleen = hero.kind === "blue" || hero.kind === "fin" || hero.kind === "humpback";
     if (d < 25) {
       var up = Math.round(Sea.surfaceFor(hero) / 60);
       return up >= 1 ? t("phase_surface", { n: up }) : t("phase_surface_short");
@@ -54,6 +54,7 @@
     if (slope < -0.25) return t("phase_ascend", { n: under });
     if (baleen) {
       var w = byId[hero.id], dive = w && w.dives.filter(function (dv) { return hero.sec >= dv.t && hero.sec <= dv.t + dv.dur; })[0];
+      if (hero.kind === "humpback") return dive && dive.lunges ? t("phase_roll", { d: fmt(Math.round(d / 5) * 5), n: under }) : t("phase_bottom_baleen", { d: fmt(Math.round(d / 5) * 5), n: under });
       return dive && dive.lunges ? t("phase_lunge", { d: fmt(Math.round(d / 10) * 10), n: under }) : t("phase_bottom_baleen", { d: fmt(Math.round(d / 10) * 10), n: under });
     }
     return t("phase_bottom", { d: fmt(Math.round(d / 10) * 10), n: under });
@@ -68,6 +69,10 @@
 
   function bioText(w) {
     if (!w) return "";
+    if (w.kind === "humpback") {
+      var when = new Intl.DateTimeFormat(locale(), { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(w.tagged + "T12:00:00Z"));
+      return t("bio_humpback", { name: w.id, when: when, hours: fmt(w.record_hours), dives: fmt(w.record_dives), max: fmt(w.record_max), min: fmt(w.record_longest_min), rolls: fmt(w.record_lunges) }) + t("bio_humpback_drawn");
+    }
     if (w.kind === "narwhal") {
       return t("bio_narwhal", { date: dateText(w.tagged), site: t("site_" + w.site), days: fmt(w.record_days), dives: fmt(w.record_dives), max: fmt(w.record_max), min: fmt(w.record_longest_min) }) + " " + t(FACTS[w.kind]);
     }

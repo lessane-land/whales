@@ -6,7 +6,8 @@
 
   var MAX_DEPTH = 1600;        // metres: the floor
   var SPEED = 90;              // seconds of whale life per second on screen (1 in real time)
-  var VIEW_M = 720;            // metres of water visible top to bottom
+  var VIEW_MAX = 720;          // metres of water visible top to bottom, at most
+  var VIEW_M = 720;            // current view, eased toward the hero's world
   var TRAIL_SEC = 45 * 60;     // seconds of dive profile trailing behind the hero
   var HERO_W = 440;
   var FAR_W = 80;
@@ -17,7 +18,7 @@
 
   var canvas, ctx, W = 0, H = 0, dpr = 1, whales = [], data = null, hero = null;
   var last = 0, running = false, onTick = null, stripes = [], snow = [], rocks = [], fish = [], squid = [], kelp = [], bubbles = [];
-  var camDepth = 0, userOffset = 0, userTouched = 0, blowUntil = 0;
+  var camDepth = 0, userOffset = 0, userTouched = 0, blowUntil = 0, nextBreath = 0, flukeUntil = 0, flukeStart = 0, wasUp = false;
   var mono = "monospace", sans = "sans-serif";
   var tickText = function (d) { return d + " m"; };
   var night = 0;               // 0 day, 1 night, from the hero's real clock
@@ -35,6 +36,8 @@
   function mix(a, b, f) { return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; }
 
   function pxPerM() { return H / VIEW_M; }
+  // Shallow divers get a closer view: a humpback at 30 m fills the screen like a beaked whale at 900.
+  function viewFor(w) { return w ? Math.max(110, Math.min(VIEW_MAX, (w.max || 300) * 2.4)) : VIEW_MAX; }
   function depthToY(d) { return H / 2 + (d - camDepth) * pxPerM(); }
   function surfaceY() { return depthToY(0); }
 
@@ -145,21 +148,24 @@
   }
 
   var lockKind = null;   // a species chosen by the user keeps the handover inside it
+  var pinned = false;    // a whale opened by link keeps the stage until she has dived once
 
   function pickHero(force) {
     // Stay with her through her breathing at the surface (about seven minutes of
     // her time), then hand over to whoever is heading down.
+    if (pinned) { if (hero && hero.cur > 50) pinned = false; else if (hero) return; }
     if (hero && !force && !(hero.cur < 40 && surfaceFor(hero) > 420)) return;
     var best = null, bestOther = null, lastKind = hero ? hero.kind : null;
     whales.forEach(function (w) {
       if (lockKind && w.kind !== lockKind) return;
       var ahead = depthAt(w, w.sec + 900) - w.cur;
       var score = (w.cur + ahead * 1.5) / (w.kind === "sperm" ? 1 : 0.35);   // fair to the shallower divers
+      if (w.cur < 30 && ahead > 60) score += 2000;                               // at the surface and about to go: the best story
       if (!best || score > best.score) best = { w: w, score: score };
       if (w.kind !== lastKind && ahead > 40 && (!bestOther || score > bestOther.score)) bestOther = { w: w, score: score };
     });
     var pick = bestOther || best;
-    if (pick && pick.w !== hero) { hero = pick.w; layoutWhales(); }
+    if (pick && pick.w !== hero) { hero = pick.w; layoutWhales(); blowUntil = 0; flukeUntil = 0; wasUp = hero.cur < 4; }
   }
 
   function drawSky(sy) {
@@ -317,9 +323,11 @@
     ctx.fillStyle = "rgba(234, 244, 247, 0.42)";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    for (var d = 100; d <= 1500; d += 100) {
+    var tickStep = VIEW_M < 200 ? 10 : VIEW_M < 400 ? 25 : 100;
+    for (var d = tickStep; d <= 1500; d += tickStep) {
       var y = depthToY(d);
       if (y < sy + 8 || y > H - 8 || y < 110) continue;
+      if (d > VIEW_M * 2.5 && d % 100) continue;
       ctx.fillRect(16, y, 10, 1);
       ctx.fillText(tickText(d), 30, y);
     }
@@ -491,6 +499,7 @@
     eye: [-41, -3], box: 0.95
   };
   // Narwhal: mottled grey, no dorsal fin, and the tusk.
+  MESH.humpback = { facets: [], eye: [0, 0], box: 1.2 };
   MESH.narwhal = {
     facets: [
       { p: [[-48, 1], [-45, -8], [-32, -11], [-30, -2]], s: 1 },
@@ -512,6 +521,7 @@
     blainville: { near: ["#6f7d86", "#56646e", "#424f58", "#323d45", "#242c33", "#d8dde0"], far: ["#5c6e7c", "#4b5c69", "#3c4b57", "#2f3b46", "#252f38", "#c5ccd0"] },
     pilot: { near: ["#2b3340", "#1f2630", "#161c24", "#0f131a", "#0a0d12", "#0a0d12"], far: ["#2a3a4e", "#223141", "#1b2735", "#151e2a", "#101720", "#101720"] },
     beluga: { near: ["#f4f7f8", "#dfe7eb", "#c3d1d8", "#a7b9c3", "#8ea3ae", "#8ea3ae"], far: ["#d9e6ec", "#c4d5de", "#adc3ce", "#98b0bd", "#86a0ae", "#86a0ae"] },
+    humpback: { near: ["#4a5a66", "#38474f", "#2b373f", "#1f2930", "#151c22", "#dfe6ea"], far: ["#3e5468", "#324657", "#293a48", "#202e3a", "#19252e", "#cdd6dc"] },
     narwhal: { near: ["#b9c2c6", "#949fa5", "#717c83", "#545d64", "#3b4349", "#e8ece9"], far: ["#a4b3bb", "#8a9aa3", "#71818b", "#5c6a74", "#4a565f", "#d4dbd9"] },
     sperm: { near: ["#2f5276", "#223f5e", "#182f49", "#102238", "#0a1729", "#0a1729"], far: ["#3d6487", "#2f5272", "#24425f", "#1b344d", "#142a40", "#142a40"] },
     blue:  { near: ["#8fb5cc", "#6c95b2", "#527a98", "#3d607c", "#2a475f", "#2a475f"], far: ["#8fb0c6", "#7199b3", "#5a8099", "#476882", "#36526a", "#36526a"] },
@@ -573,18 +583,18 @@
     ctx.stroke();
   }
 
-  function drawBlow(now, x, sy, hs) {
-    var k = (blowUntil - now) / 2200;
+  function drawBlow(now, x, y, hs) {
+    var k = (blowUntil - now) / 2000;
     if (k <= 0) return;
     var grow = 1 - k;
     ctx.save();
-    ctx.globalAlpha = 0.7 * k;
+    ctx.globalAlpha = 0.8 * Math.min(1, k * 1.6);
     ctx.fillStyle = "#ffffff";
-    for (var i = 0; i < 7; i++) {
-      var ang = -Math.PI / 2 - 0.45 + i * 0.15;
-      var len = (30 + i % 3 * 12) * grow * hs;
+    for (var i = 0; i < 11; i++) {
+      var ang = -Math.PI / 2 - 0.5 + i * 0.1 + grow * 0.25;
+      var len = (36 + (i % 4) * 14) * (0.3 + grow * 0.9) * hs;
       ctx.beginPath();
-      ctx.arc(x - 60 * hs + Math.cos(ang) * len, sy - 6 + Math.sin(ang) * len, 2.2 + grow * 2, 0, Math.PI * 2);
+      ctx.arc(x + Math.cos(ang) * len, y + Math.sin(ang) * len, (2 + grow * 3.5) * hs, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
@@ -626,6 +636,7 @@
     }
 
     // Camera: the hero, plus whatever the user asked for, which eases away after a rest.
+    VIEW_M += (viewFor(hero) - VIEW_M) * Math.min(1, dt * 0.9);
     if (now - userTouched > USER_REST) userOffset *= Math.max(0, 1 - dt * 0.8);
     var want = (hero ? Math.max(VIEW_M * 0.26, hero.cur) : VIEW_M * 0.26) + userOffset;
     want = Math.max(VIEW_M * 0.26, Math.min(MAX_DEPTH - VIEW_M * 0.3, want));
@@ -640,10 +651,25 @@
     var hx = hero ? hero.x0 + Math.sin(now / 15000) * hero.drift : W / 2;
     var hy = hero ? depthToY(hero.cur) : H;
     var hs = HERO_W / 100 * (W < 720 ? 0.55 : Math.min(1, W / 1280)) * (1 + 0.2 * Math.min(1, (hero ? hero.cur : 0) / 1000)) * (hero && hero.kind === "blue" ? 1.15 : 1);
+    // The surface clamp and the breath use the hero scale; a zoomed view keeps the whale the same size.
+    var hb = hero ? (MESH[hero.kind] || MESH.sperm).box : 1;
+    var up = hero && hero.cur < 4;
+    var flukeUp = now < flukeUntil;
     if (hero) {
-      // Keep the whole body under the surface line, whatever her angle.
-      var hb = (MESH[hero.kind] || MESH.sperm).box, reach = 55 * hs * hb * Math.abs(Math.sin(hero.pitch)) + 14 * hs * hb;
-      if (hy - reach < sy) hy = sy + reach;
+      if (up) {
+        // Breathing: her back and blowhole ride above the line, with a slow bob.
+        hy = sy + 7 * hs * hb + Math.sin(now / 1700) * 2.5;
+        if (now > nextBreath) { blowUntil = now + 2000; nextBreath = now + (SPEED === 1 ? 9000 + Math.random() * 5000 : 2200 + Math.random() * 1600); }
+        wasUp = true;
+      } else {
+        if (wasUp && hero.cur > 6) { flukeUntil = now + (SPEED === 1 ? 2800 : 1400); flukeStart = now; wasUp = false; }
+        if (hero.cur > 30) flukeUntil = 0;
+        if (!flukeUp) {
+          // Keep the whole body under the surface line, whatever her angle.
+          var reach = 55 * hs * hb * Math.abs(Math.sin(hero.pitch)) + 14 * hs * hb;
+          if (hy - reach < sy) hy = sy + reach;
+        }
+      }
     }
 
     var far = whales.filter(function (w) { return w !== hero; })
@@ -678,8 +704,33 @@
       hero.pitch += (pitch2 - hero.pitch) * 0.03;
       hero.speed = Math.min(1, Math.abs(ahead2) / 40);
       drawTrail(hero, hx);
-      drawWhale(hx, hy, hero.pitch, hs, shadeOf(hero, true), 1, hero.kind, false, hero.speed, 0);
-      drawBlow(now, hx, sy, hs / (HERO_W / 100));
+      if (flukeUp) {
+        // Arch: the head stays just under the surface, the body rotates about it, the flukes lift.
+        var k = Math.min(1, (now - flukeStart) / (flukeUntil - flukeStart)), arc = Math.sin(k * Math.PI) * 0.95;
+        var headX = hx - 46 * hs * hb, headY = sy + 44 * hs * hb;
+        var cx2 = headX + Math.cos(-arc) * 46 * hs * hb, cy2 = headY + Math.sin(-arc) * 46 * hs * hb;
+        hero.pitch = -arc;
+        drawWhale(cx2, cy2, -arc, hs, shadeOf(hero, true), 1, hero.kind, false, hero.speed, 0);
+        // Water running off the flukes.
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+        ctx.lineWidth = 1.2;
+        for (var d2 = 0; d2 < 5; d2++) { var tx = cx2 + Math.cos(-arc) * 48 * hs * hb + (d2 - 2) * 6, ty = cy2 + Math.sin(-arc) * 48 * hs * hb; if (ty < sy) { ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx, Math.min(sy, ty + 10 + d2 * 5)); ctx.stroke(); } }
+      } else {
+        drawWhale(hx, hy, hero.pitch, hs, shadeOf(hero, true), 1, hero.kind, false, hero.speed, 0);
+      }
+      if (up) {
+        // Foam around her where she breaks the surface.
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(hx, sy, 56 * hs * hb, 3, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+        ctx.beginPath();
+        ctx.ellipse(hx, sy, 70 * hs * hb, 5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      drawBlow(now, hx - 34 * hs * hb, sy - 10 * hs * hb, hs / (HERO_W / 100) * hb);
     }
 
     // The deep is dark: a veil that grows past 500 m and with the night.
@@ -745,6 +796,7 @@
             w.sec = (((opts.at - h0) * 3600) % (w.depth.length * w.step) + w.depth.length * w.step) % (w.depth.length * w.step);
           }
           hero = w;
+          pinned = true;
         });
       }
       whales.forEach(function (w) { w.cur = depthAt(w, w.sec); });

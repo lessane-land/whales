@@ -135,7 +135,7 @@
   function moan(t, kind) {
     var o = ac.createOscillator();
     o.type = "sine";
-    var f0 = kind === "blue" ? 62 : 84;
+    var f0 = kind === "blue" ? 62 : kind === "humpback" ? 180 + Math.random() * 160 : 84;
     o.frequency.setValueAtTime(f0, t);
     o.frequency.linearRampToValueAtTime(f0 * 0.82, t + (kind === "blue" ? 4.5 : 1.2));
     var g = ac.createGain();
@@ -190,7 +190,7 @@
     update: function (depth, slope, surfaced, kind) {
       if (!on || !ac) return;
       var t = ac.currentTime;
-      if (kind === "blue" || kind === "fin") { baleen(t, depth, slope, surfaced, kind); return; }
+      if (kind === "blue" || kind === "fin" || kind === "humpback") { baleen(t, depth, slope, surfaced, kind); return; }
       var quiet = (kind === "cuvier" || kind === "blainville") && depth < 400;   // beaked whales keep silent near the surface
       var chatty = kind === "beluga" || kind === "pilot" || kind === "narwhal";
       // The sea deepens with depth: lower, heavier.
