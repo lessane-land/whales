@@ -38,7 +38,7 @@
   var lastShown = null, lastDepth = -1, wasDeep = null;
   function onTick(deepest, whales, surfaceY) {
     var deep = surfaceY < 70;
-    if (deep !== wasDeep) { wasDeep = deep; document.body.classList.toggle("deep", deep); }
+    if (deep !== wasDeep) { wasDeep = deep; document.body.classList.toggle("below", deep); }
     if (!deepest) return;
     var d = Math.round(deepest.cur / 5) * 5;
     if (deepest === lastShown && d === lastDepth) return;
