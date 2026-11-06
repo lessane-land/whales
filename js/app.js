@@ -28,7 +28,7 @@
     document.getElementById("lang").textContent = t("lang_switch");
     if (window.Sound) document.getElementById("sound").textContent = t(Sound.enabled() ? "sound_off" : "sound_on");
     if (window.Sea && Sea.realTime) document.getElementById("real").textContent = t(Sea.realTime() ? "real_on" : "real_off");
-    document.getElementById("full").textContent = t((document.fullscreenElement || document.webkitFullscreenElement) ? "full_off" : "full_on");
+    document.getElementById("screen-exit").textContent = t("screen_off");
     lastKey = "";
   }
 
@@ -232,23 +232,60 @@
       document.getElementById("hint").textContent = t("hint");
       renderSpecies();
     });
-    // Full screen: the page as a screen-saver. The pills fade after a while and come back on a touch.
-    var fullBtn = document.getElementById("full");
-    var fs = document.documentElement;
-    if (!(fs.requestFullscreen || fs.webkitRequestFullscreen)) fullBtn.hidden = true;
-    function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
-    fullBtn.addEventListener("click", function () {
-      if (isFull()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
-      else { (fs.requestFullscreen || fs.webkitRequestFullscreen).call(fs); }
-    });
-    function onFullChange() {
-      var full = isFull();
-      fullBtn.textContent = t(full ? "full_off" : "full_on");
-      document.body.classList.toggle("full", full);
-      wake();
+    // Modo pantalla: full screen, wake lock, no interface. ?pantalla is the kiosk the
+    // macOS screen saver loads: it starts on its own, with no exit button and no cursor.
+    var kiosk = new URLSearchParams(location.search).has("pantalla");
+    var S = { on: false, lock: null, idle: 0 };
+    var fullBtn = document.getElementById("full"), exitBtn = document.getElementById("screen-exit");
+    function fullHint() {
+      var app = matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches || navigator.standalone;
+      var seen = false;
+      try { seen = !!sessionStorage.getItem("ballenas.fsHint"); } catch (e) { /* private mode */ }
+      if (document.fullscreenEnabled || app || seen) return;
+      try { sessionStorage.setItem("ballenas.fsHint", "1"); } catch (e) { /* private mode */ }
+      var el = document.createElement("div");
+      el.className = "fs-hint";
+      el.setAttribute("role", "status");
+      el.textContent = t("fs_hint");
+      document.body.appendChild(el);
+      requestAnimationFrame(function () { el.classList.add("in"); });
+      setTimeout(function () { el.classList.remove("in"); setTimeout(function () { el.remove(); }, 600); }, 7000);
     }
+    function lockScreen() { try { navigator.wakeLock.request("screen").then(function (l) { S.lock = l; }).catch(function () {}); } catch (e) { /* no wake lock */ } }
+    function enterScreen() {
+      if (S.on) return;
+      S.on = true;
+      fullHint();
+      document.body.classList.add("screen");
+      exitBtn.hidden = false;
+      var fs = document.documentElement;
+      try { (fs.requestFullscreen || fs.webkitRequestFullscreen).call(fs).catch(function () {}); } catch (e) { /* not allowed */ }
+      lockScreen();
+      still();
+    }
+    function exitScreen() {
+      if (!S.on) return;
+      S.on = false;
+      document.body.classList.remove("screen", "still-mouse");
+      exitBtn.hidden = true;
+      if (document.fullscreenElement || document.webkitFullscreenElement) { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document).catch(function () {}); } catch (e) { /* ignore */ } }
+      if (S.lock) { S.lock.release().catch(function () {}); S.lock = null; }
+    }
+    function still() {
+      clearTimeout(S.idle);
+      S.idle = setTimeout(function () { if (S.on) document.body.classList.add("still-mouse"); }, 2500);
+    }
+    fullBtn.addEventListener("click", enterScreen);
+    exitBtn.addEventListener("click", exitScreen);
+    document.addEventListener("visibilitychange", function () { if (S.on && !document.hidden) lockScreen(); });
+    function onFullChange() { if (!(document.fullscreenElement || document.webkitFullscreenElement) && S.on && !kiosk) exitScreen(); }
     document.addEventListener("fullscreenchange", onFullChange);
     document.addEventListener("webkitfullscreenchange", onFullChange);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !kiosk) exitScreen(); });
+    document.addEventListener("pointermove", function () { if (!S.on) return; document.body.classList.remove("still-mouse"); still(); }, { passive: true });
+    if (kiosk) { document.body.classList.add("kiosk"); setTimeout(enterScreen, 1200); }
+
+    // Outside screen mode, the pills fade when idle and come back on a touch.
     var idleTimer = null;
     function wake() {
       document.body.classList.remove("idle");

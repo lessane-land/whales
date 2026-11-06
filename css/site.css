@@ -70,12 +70,41 @@ body {
 
 .pill:hover { border-color: rgba(11, 31, 58, 0.6); }
 
+/* Modo pantalla: the sea, the depth and her story; nothing else. */
+.screen-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+.screen-btn svg { color: rgba(159, 212, 228, 0.95); }
+
+body.screen .top, body.screen .tools, body.screen .species, body.screen .hint, body.screen .about-open, body.screen .deep-bio { display: none !important; }
+
+body.screen .deep { bottom: clamp(32px, 7vh, 90px); right: clamp(24px, 5vw, 80px); }
+
+body.screen .deep-depth { font-size: clamp(64px, 9vw, 150px); }
+
+body.screen .deep-story { font-size: clamp(18px, 1.8vw, 26px); max-width: 60ch; }
+
+.screen-exit { position: fixed; right: 20px; bottom: 20px; z-index: 20; transition: opacity 0.4s; color: var(--foam); border-color: var(--line); background: var(--panel); }
+
+.screen-exit[hidden] { display: none; }
+
+body.still-mouse .screen-exit { opacity: 0; pointer-events: none; }
+
+body.screen.still-mouse, body.screen.still-mouse * { cursor: none; }
+
+body.kiosk .screen-exit { display: none !important; }
+
+body.kiosk, body.kiosk * { cursor: none !important; }
+
+.fs-hint { position: fixed; z-index: 30; left: 50%; top: calc(max(16px, env(safe-area-inset-top)) + 64px); transform: translate(-50%, -10px); width: min(360px, calc(100% - 32px)); background: #0d2440; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.35; color: var(--foam); opacity: 0; transition: opacity 0.5s, transform 0.5s; pointer-events: none; }
+
+.fs-hint.in { opacity: 1; transform: translate(-50%, 0); }
+
 /* Idle: the chrome fades so only the sea remains. A touch brings it back. */
 .top, .tools, .hint, .deep-bio { transition: opacity 1.4s; }
 
 body.idle .tools, body.idle .hint { opacity: 0; pointer-events: none; }
 
-body.idle.full .top, body.idle.full .deep-bio { opacity: 0; }
+body.idle .top { opacity: 0.6; }
 
 .pill.active { border-color: rgba(159, 212, 228, 0.9); }
 
