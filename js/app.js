@@ -191,6 +191,26 @@
     renderSpecies();
   }
 
+  function countOf(kind) { return data.whales.filter(function (w) { return (w.kind || "sperm") === kind; }).length; }
+  // A menu with every species: on the stage (with "Todas") or in the sheet.
+  function buildMenu(id, kinds, current, onPick) {
+    var m = document.getElementById(id);
+    m.innerHTML = "";
+    kinds.forEach(function (k) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = k === current ? "active" : "";
+      var label = document.createElement("strong"); label.style.fontWeight = "400";
+      label.textContent = id === "species-menu" ? kindName(k) : t("sp_" + k + "_name");
+      var n = document.createElement("span");
+      n.textContent = k ? fmt(countOf(k)) : fmt(data.whales.length);
+      b.appendChild(label); b.appendChild(n);
+      b.addEventListener("click", function (e) { e.stopPropagation(); m.hidden = true; onPick(k); });
+      m.appendChild(b);
+    });
+    m.hidden = !m.hidden;
+  }
+
   var SPEEDS = [1, 10, 30, 90];
   function applySpeed(x) {
     Sea.setSpeed(x);
@@ -301,7 +321,15 @@
     });
     document.getElementById("species-prev").addEventListener("click", function () { stepSpecies(-1); });
     document.getElementById("species-next").addEventListener("click", function () { stepSpecies(1); });
-    document.getElementById("species-label").addEventListener("click", function () { stepSpecies(1); });
+    document.getElementById("species-label").addEventListener("click", function (e) {
+      e.stopPropagation();
+      buildMenu("species-menu", kindList(), chosenKind, function (k) { chosenKind = k; Sea.chooseKind(k); renderSpecies(); });
+    });
+    document.getElementById("about-name").addEventListener("click", function (e) {
+      e.stopPropagation();
+      buildMenu("about-menu", Sea.kinds(), aboutKind, function (k) { renderAbout(k); });
+    });
+    document.addEventListener("click", function () { document.getElementById("species-menu").hidden = true; document.getElementById("about-menu").hidden = true; });
     document.getElementById("about-prev").addEventListener("click", function () { var k = Sea.kinds(); renderAbout(k[(k.indexOf(aboutKind) - 1 + k.length) % k.length]); });
     document.getElementById("about-next").addEventListener("click", function () { var k = Sea.kinds(); renderAbout(k[(k.indexOf(aboutKind) + 1) % k.length]); });
     document.getElementById("sound").addEventListener("click", function () {

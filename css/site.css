@@ -199,6 +199,51 @@ body:not(.below) .scrub-btn { color: var(--ink); border-color: rgba(11, 31, 58, 
 
 body:not(.below) .scrub-label { color: var(--ink); text-shadow: none; }
 
+/* The list behind the name: every species at once, with how many whales each has. */
+.menu {
+  position: absolute;
+  left: 34px;
+  bottom: 40px;
+  min-width: 230px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #0d2440;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  z-index: 15;
+}
+
+.menu[hidden] { display: none; }
+
+.menu-up { left: 50%; top: 48px; bottom: auto; transform: translateX(-50%); }
+
+.menu button {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--foam);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.menu button:hover { background: rgba(159, 212, 228, 0.12); }
+
+.menu button.active { color: rgba(159, 212, 228, 1); }
+
+.menu button span { font-family: var(--mono); font-size: 11px; color: var(--foam-mute); }
+
+.about-head { position: relative; }
+
+.about-title h2 { cursor: pointer; }
+
 .about-open { margin-top: 10px; pointer-events: auto; color: var(--foam); border-color: var(--line); background: var(--panel); }
 
 .sheet-wide { width: min(760px, 100%); }
@@ -358,6 +403,51 @@ body.idle .scrub { opacity: 0; pointer-events: none; }
 body:not(.below) .scrub-btn { color: var(--ink); border-color: rgba(11, 31, 58, 0.25); background: rgba(255, 255, 255, 0.35); }
 
 body:not(.below) .scrub-label { color: var(--ink); text-shadow: none; }
+
+/* The list behind the name: every species at once, with how many whales each has. */
+.menu {
+  position: absolute;
+  left: 34px;
+  bottom: 40px;
+  min-width: 230px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #0d2440;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  z-index: 15;
+}
+
+.menu[hidden] { display: none; }
+
+.menu-up { left: 50%; top: 48px; bottom: auto; transform: translateX(-50%); }
+
+.menu button {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--foam);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.menu button:hover { background: rgba(159, 212, 228, 0.12); }
+
+.menu button.active { color: rgba(159, 212, 228, 1); }
+
+.menu button span { font-family: var(--mono); font-size: 11px; color: var(--foam-mute); }
+
+.about-head { position: relative; }
+
+.about-title h2 { cursor: pointer; }
 
 .about-open { margin-top: 6px; font-size: 12px; padding: 4px 10px; }
   .deep-story { font-size: 15px; }

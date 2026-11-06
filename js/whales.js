@@ -116,20 +116,25 @@
       ]
     },
     humpback: {
-      body: "M-52 -1 C-53 -8 -46 -13 -34 -14 C-18 -15 0 -13 16 -10 C28 -8 38 -5 44 -2 L44 3 C38 6 28 8 18 9 C0 10 -18 11 -34 10 C-44 9 -52 6 -52 -1 Z",
+      // The Buff's whale: a massive body with a hump under a small dorsal fin, knobs on the
+      // head and jaw, throat pleats down a pale belly, pectoral fins a third of the body with
+      // bumps along their leading edge, and a wide scalloped fluke.
+      body: "M-54 2 C-56 -3 -53 -9 -44 -11 C-34 -13 -20 -15 -6 -16 C4 -17 12 -18 18 -15 C28 -11 36 -6 44 -3 L44 3 C36 7 26 10 12 12 C-4 14 -22 14 -36 12 C-46 10 -54 7 -54 2 Z",
       jx: 44, jy: 0,
-      fluke: "M0 0 C7 -6 15 -13 26 -20 C30 -22 32 -19 29 -15 C23 -9 17 -4 12 0 C17 4 23 9 29 15 C32 19 30 22 26 20 C15 13 7 6 0 0 Z",
-      dorsal: "M18 -10 C20 -15 24 -16 27 -14 C25 -12 24 -10 25 -8 Z",
-      fx: -22, fy: 8, fin: "M0 0 C6 2 18 14 26 26 C27 28 25 29 23 27 C14 18 5 9 0 5 Z",
-      knobs: [[-50, -5], [-46, -9], [-41, -12], [-36, -13]],
-      grooves: [[-48, 0, -14, 3], [-46, 2, -12, 5], [-44, 4, -14, 7]],
-      eye: [-43, -4],
+      fluke: "M0 0 C8 -7 16 -15 25 -22 C28 -24 30 -22 28 -19 C24 -14 20 -9 16 -6 L13 -3 L11 0 L13 3 L16 6 C20 9 24 14 28 19 C30 22 28 24 25 22 C16 15 8 7 0 0 Z",
+      dorsal: "M16 -15 C18 -21 22 -23 25 -21 C23 -18 23 -15 24 -13 Z",
+      fx: -30, fy: 9, fin: "M0 0 C4 1 12 6 22 14 C28 19 34 26 38 33 C36 35 32 34 28 31 C20 25 10 15 2 7 Z",
+      finBumps: [[7, 3], [13, 7], [19, 12], [25, 17], [31, 24]],
+      knobs: [[-51, -6], [-47, -9], [-42, -11], [-37, -12], [-32, -13], [-52, 5], [-48, 8], [-43, 10]],
+      throat: [[-54, 2], [-28, 1], [-22, 13], [-38, 12], [-50, 8]],
+      grooves: [[-50, 4, -26, 4], [-48, 6, -26, 7], [-46, 8, -28, 10], [-42, 10, -30, 12]],
+      eye: [-45, -3],
       facets: [
-        { p: [[-54, -20], [-20, -20], [-12, -5], [-32, -1], [-54, 1]], s: 0 },
-        { p: [[-20, -20], [14, -20], [26, -8], [8, -3], [-12, -5]], s: 1 },
-        { p: [[-54, 1], [-32, -1], [8, -3], [4, 6], [-30, 7], [-54, 6]], s: 2 },
+        { p: [[-56, -20], [-22, -20], [-14, -6], [-34, -1], [-56, 1]], s: 0 },
+        { p: [[-22, -20], [14, -20], [26, -8], [8, -3], [-14, -6]], s: 1 },
+        { p: [[-56, 1], [-34, -1], [8, -3], [4, 6], [-30, 7], [-56, 6]], s: 2 },
         { p: [[8, -3], [26, -8], [48, -3], [48, 5], [20, 9], [4, 6]], s: 1 },
-        { p: [[-54, 6], [-30, 7], [4, 6], [20, 9], [12, 20], [-54, 20]], s: 3 }
+        { p: [[-56, 6], [-30, 7], [4, 6], [20, 9], [12, 20], [-56, 20]], s: 3 }
       ]
     },
     narwhal: {
@@ -211,6 +216,7 @@
           ctx.stroke();
         });
         if (sp.jaw) { poly(ctx, sp.jaw); ctx.fillStyle = shade[5]; ctx.fill(); }
+        if (sp.throat) { poly(ctx, sp.throat); ctx.fillStyle = shade[5]; ctx.globalAlpha = 0.55; ctx.fill(); ctx.globalAlpha = 1; }
         if (sp.grooves) {
           ctx.strokeStyle = "rgba(190, 225, 240, " + ((opts.seam || 0.3) * 0.9) + ")";
           ctx.lineWidth = 0.5;
@@ -232,7 +238,10 @@
       ctx.rotate(0.15 + Math.sin(t / 700 + 1) * 0.12 + speed * 0.2);
       ctx.fillStyle = shade[3];
       ctx.fill(path(kind + ":fin", sp.fin));
-      if (!flat) { ctx.strokeStyle = "rgba(5, 12, 24, 0.3)"; ctx.lineWidth = 0.5; ctx.stroke(path(kind + ":fin", sp.fin)); }
+      if (!flat) {
+        ctx.strokeStyle = "rgba(5, 12, 24, 0.3)"; ctx.lineWidth = 0.5; ctx.stroke(path(kind + ":fin", sp.fin));
+        if (sp.finBumps) { ctx.fillStyle = shade[5]; ctx.globalAlpha = 0.6; sp.finBumps.forEach(function (b) { ctx.beginPath(); ctx.arc(b[0], b[1], 0.9, 0, Math.PI * 2); ctx.fill(); }); ctx.globalAlpha = 1; }
+      }
       ctx.restore();
 
       if (!flat) {
