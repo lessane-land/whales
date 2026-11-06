@@ -5,7 +5,8 @@
   "use strict";
 
   var ac = null, master = null, sea = null, seaGain = null, seaFilter = null, noiseBuf = null;
-  var on = false, nextClick = 0, creakUntil = 0, nextCreak = 0;
+  var on = false, nextClick = 0, creakUntil = 0, nextCreak = 0, nextBreath = 0, nextCoda = 0;
+  var waves = null, wavesGain = null, wavesLfo = null;
 
   function noise(seconds) {
     var n = Math.floor(ac.sampleRate * seconds), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
@@ -34,6 +35,37 @@
     seaFilter.connect(seaGain);
     seaGain.connect(master);
     sea.start();
+    // Waves at the surface: a higher band of the same noise, swelling slowly.
+    waves = ac.createBufferSource();
+    waves.buffer = noiseBuf;
+    waves.loop = true;
+    var wf = ac.createBiquadFilter();
+    wf.type = "bandpass";
+    wf.frequency.value = 650;
+    wf.Q.value = 0.6;
+    wavesGain = ac.createGain();
+    wavesGain.gain.value = 0;
+    var lfo = ac.createOscillator();
+    lfo.frequency.value = 0.12;
+    var lfoGain = ac.createGain();
+    lfoGain.gain.value = 0.04;
+    lfo.connect(lfoGain);
+    lfoGain.connect(wavesGain.gain);
+    lfo.start();
+    waves.connect(wf);
+    wf.connect(wavesGain);
+    wavesGain.connect(master);
+    waves.start();
+  }
+
+  // A coda: a short pattern of clicks, the social sound at the surface.
+  function coda(t) {
+    var n = 3 + Math.floor(Math.random() * 5), gap = 0.16 + Math.random() * 0.2;
+    for (var i = 0; i < n; i++) {
+      var g = gap * (i === n - 1 ? 1.6 : 1);
+      click(t, 0.5, false);
+      t += g;
+    }
   }
 
   function click(t, loud, hi) {
@@ -74,8 +106,8 @@
     f.frequency.exponentialRampToValueAtTime(400, t + 0.9);
     var g = ac.createGain();
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.5, t + 0.08);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+    g.gain.linearRampToValueAtTime(0.9, t + 0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
     src.connect(f);
     f.connect(g);
     g.connect(master);
@@ -104,7 +136,16 @@
       var k = Math.min(1, depth / 1200);
       seaFilter.frequency.setTargetAtTime(180 - 110 * k, t, 0.5);
       seaGain.gain.setTargetAtTime(0.3 + 0.35 * k, t, 0.5);
-      if (surfaced) blow(t + 0.05);
+      if (surfaced) { blow(t + 0.05); nextBreath = t + 9; nextCoda = t + 4 + Math.random() * 10; }
+      // At the surface: waves, a breath every ten seconds or so, a coda now and then.
+      var up = depth < 30;
+      wavesGain.gain.setTargetAtTime(up ? 0.12 : 0, t, 0.8);
+      if (up) {
+        if (nextBreath === 0) nextBreath = t + 2;
+        if (t > nextBreath) { blow(t); nextBreath = t + 8 + Math.random() * 6; }
+        if (nextCoda === 0) nextCoda = t + 3 + Math.random() * 8;
+        if (t > nextCoda) { coda(t); nextCoda = t + 12 + Math.random() * 25; }
+      } else { nextBreath = 0; nextCoda = 0; }
       // Clicks: searching from 300 m down, about one a second. At the bottom, creaks.
       var searching = depth > 300;
       var atBottom = depth > 500 && Math.abs(slope) < 0.2;

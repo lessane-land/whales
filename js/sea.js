@@ -104,6 +104,12 @@
     if (hero) { hero.x0 = W * (W < 720 ? 0.5 : 0.42); hero.drift = 18; }
   }
 
+  function surfaceFor(w) {
+    var s = 0;
+    while (s < 6 * 3600 && depthAt(w, w.sec - s) <= 50) s += 10;
+    return s;
+  }
+
   function depthAt(w, sec) {
     var k = sec / w.step;
     var i = Math.floor(k), f = k - i, n = w.depth.length;
@@ -129,7 +135,9 @@
   }
 
   function pickHero(force) {
-    if (hero && hero.cur > 40 && !force) return;
+    // Stay with her through her breathing at the surface (about seven minutes of
+    // her time), then hand over to whoever is heading down.
+    if (hero && !force && !(hero.cur < 40 && surfaceFor(hero) > 420)) return;
     var best = null;
     whales.forEach(function (w) {
       var ahead = depthAt(w, w.sec + 900) - w.cur;
@@ -561,11 +569,7 @@
       while (s < 6 * 3600 && depthAt(w, w.sec - s) > 50) s += 10;
       return s;
     },
-    surfaceFor: function (w) {
-      var s = 0;
-      while (s < 6 * 3600 && depthAt(w, w.sec - s) <= 50) s += 10;
-      return s;
-    },
+    surfaceFor: surfaceFor,
     localTime: function (w) {
       if (!w.start) return null;
       return new Date(w.start.getTime() + w.sec * 1000 + w.utc * 3600000);

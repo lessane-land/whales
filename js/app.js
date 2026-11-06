@@ -52,12 +52,14 @@
     return t("phase_bottom", { d: fmt(Math.round(d / 10) * 10), n: under });
   }
 
-  var lastKey = "", wasBelow = null, lastHero = null, hintUntil = 0, lastDepth = 0;
+  var lastKey = "", wasBelow = null, lastHero = null, hintUntil = 0, wasUnder = false, underHero = null;
   function onTick(hero, whales, surfaceY, info) {
     if (hero && window.Sound) {
-      var surfaced = lastDepth > 50 && hero.cur < 4;
+      if (hero !== underHero) { underHero = hero; wasUnder = hero.cur > 50; }
+      var surfaced = false;
+      if (hero.cur > 50) wasUnder = true;
+      else if (wasUnder && hero.cur < 6) { wasUnder = false; surfaced = true; }
       Sound.update(hero.cur, info ? info.slope : 0, surfaced);
-      lastDepth = hero.cur;
     }
     var below = surfaceY < 70 || (info && info.night > 0.5);
     if (below !== wasBelow) { wasBelow = below; document.body.classList.toggle("below", below); }
