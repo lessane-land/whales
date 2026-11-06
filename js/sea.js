@@ -5,7 +5,7 @@
   "use strict";
 
   var MAX_DEPTH = 1600;        // metres: the floor
-  var SPEED = 90;              // seconds of whale life per second on screen
+  var SPEED = 90;              // seconds of whale life per second on screen (1 in real time)
   var VIEW_M = 720;            // metres of water visible top to bottom
   var TRAIL_SEC = 45 * 60;     // seconds of dive profile trailing behind the hero
   var HERO_W = 440;
@@ -771,6 +771,22 @@
       requestAnimationFrame(draw);
     },
     speed: SPEED,
+    // Real time: one of your seconds is one of hers, and every whale's clock is
+    // set to your own local hour, so her night is your night.
+    setRealTime: function (real) {
+      SPEED = real ? 1 : 90;
+      if (!real) return;
+      var now = new Date(), hour = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+      whales.forEach(function (w) {
+        if (!w.start) return;
+        var h0 = localHour({ start: w.start, sec: 0, utc: w.utc });
+        var len = w.depth.length * w.step;
+        w.sec = (((hour - h0) * 3600) % len + len) % len;
+        w.cur = depthAt(w, w.sec);
+      });
+      pickHero(true);
+    },
+    realTime: function () { return SPEED === 1; },
     // Choose a species: the best diver of that kind becomes the hero now, and
     // handovers stay inside the species. null means all.
     chooseKind: function (kind) {

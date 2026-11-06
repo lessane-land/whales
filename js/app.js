@@ -27,6 +27,7 @@
     document.querySelectorAll("[data-i18n]").forEach(function (el) { el.textContent = t(el.dataset.i18n); });
     document.getElementById("lang").textContent = t("lang_switch");
     if (window.Sound) document.getElementById("sound").textContent = t(Sound.enabled() ? "sound_off" : "sound_on");
+    if (window.Sea && Sea.realTime) document.getElementById("real").textContent = t(Sea.realTime() ? "real_on" : "real_off");
     document.getElementById("full").textContent = t((document.fullscreenElement || document.webkitFullscreenElement) ? "full_off" : "full_on");
     lastKey = "";
   }
@@ -117,7 +118,7 @@
     if (lt) {
       var ds = new Intl.DateTimeFormat(locale(), { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(lt);
       var ts = new Intl.DateTimeFormat(locale(), { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }).format(lt);
-      document.getElementById("deep-sub").textContent = t("clock", { date: ds, time: ts });
+      document.getElementById("deep-sub").textContent = t("clock", { date: ds, time: ts }) + (Sea.realTime() ? " · " + t("speed_real") : "");
     }
   }
 
@@ -172,6 +173,7 @@
         tick: function (m) { return t("tick", { n: fmt(m) }); }
       });
       renderSpecies();
+      try { if (localStorage.getItem("real") === "1") document.getElementById("real").click(); } catch (e) { /* private mode */ }
       var hint = document.getElementById("hint");
       hint.textContent = t("hint");
       hint.hidden = false;
@@ -215,6 +217,14 @@
     ["pointermove", "pointerdown", "keydown", "touchstart"].forEach(function (ev) { document.addEventListener(ev, wake, { passive: true }); });
     wake();
 
+    document.getElementById("real").addEventListener("click", function () {
+      var real = !Sea.realTime();
+      Sea.setRealTime(real);
+      try { localStorage.setItem("real", real ? "1" : "0"); } catch (e) { /* private mode */ }
+      document.getElementById("real").textContent = t(real ? "real_on" : "real_off");
+      document.getElementById("real").classList.toggle("active", real);
+      lastKey = "";
+    });
     document.getElementById("sound").addEventListener("click", function () {
       var on = Sound.toggle();
       document.getElementById("sound").textContent = t(on ? "sound_off" : "sound_on");
