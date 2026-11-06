@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b1f3a">
+<title>Ballenas</title>
+<meta name="description" content="Cachalotes reales, inmersión a inmersión, con datos abiertos.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/site.css?v=1">
+</head>
+<body>
+<canvas id="sea" aria-label="Mar"></canvas>
+
+<header class="top">
+  <h1 class="title"><span data-i18n="title">Ballenas</span></h1>
+  <p class="tagline" data-i18n="tagline">Cachalotes reales, inmersión a inmersión</p>
+</header>
+
+<nav class="tools" aria-label="Opciones">
+  <button class="pill" id="lang" type="button" aria-label="Language">EN</button>
+  <button class="pill" id="credits-open" type="button" data-i18n="credits">Créditos</button>
+</nav>
+
+<section class="deep" id="deep" aria-live="polite">
+  <p class="deep-depth" id="deep-depth"></p>
+  <p class="deep-who" id="deep-who"></p>
+  <p class="deep-sub" id="deep-sub"></p>
+</section>
+
+<aside class="sheet" id="credits" hidden>
+  <div class="sheet-body">
+    <button class="pill sheet-close" id="credits-close" type="button" data-i18n="close">Cerrar</button>
+    <h2 data-i18n="credits">Créditos</h2>
+    <p data-i18n="credits_intro"></p>
+    <p data-i18n="credits_data"></p>
+    <p data-i18n="credits_paper"></p>
+    <p class="muted" data-i18n="credits_made"></p>
+  </div>
+</aside>
+
+<script src="js/i18n.js?v=1"></script>
+<script src="js/sea.js?v=1"></script>
+<script src="js/app.js?v=1"></script>
+</body>
+</html>
