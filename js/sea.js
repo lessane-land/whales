@@ -8,10 +8,11 @@
   var SPEED = 90;              // seconds of whale life per second on screen
   var VIEW_M = 720;            // metres of water visible top to bottom
   var TRAIL_SEC = 45 * 60;     // seconds of dive profile trailing behind the hero
-  var HERO_W = 230;
-  var FAR_W = 62;
-  var SNOW = 90;
-  var FISH = 46;
+  var HERO_W = 440;
+  var FAR_W = 80;
+  var FAR_MAX = 4;             // small whales shown at once
+  var SNOW = 36;
+  var FISH = 34;
   var USER_REST = 7000;        // ms before the camera eases back after the user moved it
 
   var canvas, ctx, W = 0, H = 0, dpr = 1, whales = [], data = null, hero = null;
@@ -53,14 +54,19 @@
     makeLife();
   }
 
+  // The water is made of vertical bands: white, pale, teal, deep, navy, in
+  // uneven widths, the Buff's signature. Each band has a tone (0 light to 4 dark).
   function makeStripes() {
     stripes = [];
     seed = 11;
-    var x = -40;
-    while (x < W + 40) {
-      var w = 10 + rnd() * 70;
-      stripes.push({ x: x, w: w, a: 0.06 + rnd() * 0.2, phase: rnd() * Math.PI * 2, tilt: (rnd() - 0.5) * 0.12 });
-      x += w + 6 + rnd() * 40;
+    var x = -10, tones = [0, 1, 2, 1, 3, 2, 4, 1, 0, 2, 3, 1, 2, 4, 0, 3];
+    var i = 0;
+    while (x < W + 10) {
+      var w = 6 + rnd() * 54;
+      if (rnd() < 0.18) w += 40;
+      stripes.push({ x: x, w: w, tone: tones[i % tones.length], phase: rnd() * Math.PI * 2 });
+      x += w;
+      i++;
     }
   }
 
@@ -71,6 +77,11 @@
   }
 
   function makeRocks() {
+    rocks = [
+      { par: 1, c: "#071a2e", pts: [[-0.02, 1380], [0.06, 1340], [0.14, 1400], [0.2, 1370], [0.27, 1440], [0.33, 1420], [0.4, 1700], [-0.02, 1700]] },
+      { par: 1, c: "#040d1c", pts: [[-0.02, 1560], [0.1, 1540], [0.22, 1570], [0.36, 1530], [0.5, 1575], [0.63, 1545], [0.78, 1580], [0.9, 1550], [1.02, 1570], [1.02, 1800], [-0.02, 1800]] }
+    ];
+    return;
     rocks = [
       { par: 1, c: "#061427", pts: [[-0.02, 250], [0.05, 230], [0.09, 330], [0.07, 520], [0.12, 700], [0.1, 980], [0.15, 1250], [0.13, 1700], [-0.02, 1700]] },
       { par: 0.6, c: "#0b2240", pts: [[-0.02, 420], [0.14, 440], [0.2, 620], [0.17, 900], [0.24, 1150], [0.22, 1700], [-0.02, 1700]] },
@@ -88,9 +99,9 @@
     var cx = W * 0.3, cd = 60;
     for (var i = 0; i < FISH; i++) fish.push({ x: cx + (rnd() - 0.5) * 220, d: cd + (rnd() - 0.5) * 40, vx: 0, vd: 0, ph: rnd() * 6.28 });
     squid = [];
-    for (var j = 0; j < 4; j++) squid.push({ x: W * (0.25 + rnd() * 0.5), d: 650 + rnd() * 550, ph: rnd() * 6.28, s: 0.7 + rnd() * 0.6 });
+    for (var j = 0; j < 2; j++) squid.push({ x: W * (0.25 + rnd() * 0.5), d: 650 + rnd() * 550, ph: rnd() * 6.28, s: 0.7 + rnd() * 0.6 });
     kelp = [];
-    for (var k = 0; k < 7; k++) kelp.push({ x: W * (0.945 + rnd() * 0.07), base: 28 + rnd() * 30, h: 26 + rnd() * 26, ph: rnd() * 6.28 });
+    kelp = [];
   }
 
   function layoutWhales() {
@@ -101,7 +112,7 @@
       w.drift = 14 + (i % 3) * 10;
       w.far = 0.55 + (i % 4) * 0.12;
     });
-    if (hero) { hero.x0 = W * (W < 720 ? 0.5 : 0.42); hero.drift = 18; }
+    if (hero) { hero.x0 = W * (W < 720 ? 0.5 : 0.4); hero.drift = 22; }
   }
 
   function surfaceFor(w) {
@@ -134,12 +145,15 @@
     return (7 - hour) / 2;
   }
 
+  var lockKind = null;   // a species chosen by the user keeps the handover inside it
+
   function pickHero(force) {
     // Stay with her through her breathing at the surface (about seven minutes of
     // her time), then hand over to whoever is heading down.
     if (hero && !force && !(hero.cur < 40 && surfaceFor(hero) > 420)) return;
     var best = null, bestOther = null, lastKind = hero ? hero.kind : null;
     whales.forEach(function (w) {
+      if (lockKind && w.kind !== lockKind) return;
       var ahead = depthAt(w, w.sec + 900) - w.cur;
       var score = (w.cur + ahead * 1.5) / (w.kind === "sperm" ? 1 : 0.35);   // fair to the shallower divers
       if (!best || score > best.score) best = { w: w, score: score };
@@ -192,11 +206,26 @@
       ctx.closePath();
       ctx.fill();
     });
+    ctx.fillStyle = "rgba(255, 255, 255, " + (0.5 * (1 - night)).toFixed(2) + ")";
+    ctx.fillRect(0, sy - 14, W, 14);
     var hz = ctx.createLinearGradient(0, sy - skyH * 0.6, 0, sy);
     hz.addColorStop(0, "rgba(237, 243, 245, 0)");
     hz.addColorStop(1, "rgba(237, 243, 245, " + (0.45 * (1 - night)).toFixed(2) + ")");
     ctx.fillStyle = hz;
     ctx.fillRect(0, Math.max(0, sy - skyH), W, Math.min(sy, skyH));
+  }
+
+  function drawCoral() {
+    var y = depthToY(1392), x = W * 0.09;
+    if (y < 0 || y > H + 30) return;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = "#e0604a"; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+    for (var i = 0; i < 7; i++) { var a = -Math.PI / 2 + (i - 3) * 0.28; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 11, Math.sin(a) * 11); ctx.stroke(); }
+    ctx.translate(W * 0.07, depthToY(1372) - y);
+    ctx.strokeStyle = "#5fd3a2";
+    for (var j = 0; j < 6; j++) { var b = -Math.PI / 2 + (j - 2.5) * 0.34; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(Math.cos(b) * 7, Math.sin(b) * 7 - 3, Math.cos(b) * 13, Math.sin(b) * 13); ctx.stroke(); }
+    ctx.restore();
   }
 
   function drawRocks(parMax) {
@@ -214,36 +243,37 @@
     });
   }
 
+  var TONES = [
+    [236, 248, 250],   // white
+    [150, 214, 230],   // pale
+    [72, 170, 198],    // teal
+    [34, 112, 150],    // deep
+    [16, 60, 96]       // navy
+  ];
+
   function drawWater(now, sy) {
     var y0 = Math.max(0, sy), y1 = H;
     if (y0 >= y1) return;
+    // Base: the depth gradient.
     var g = ctx.createLinearGradient(0, depthToY(0), 0, depthToY(MAX_DEPTH));
-    STOPS.forEach(function (s) { g.addColorStop(s[0] / MAX_DEPTH, rgb(mix(s[1], [4, 10, 22], night * 0.55))); });
+    STOPS.forEach(function (st) { g.addColorStop(st[0] / MAX_DEPTH, rgb(mix(st[1], [4, 10, 22], night * 0.55))); });
     ctx.fillStyle = g;
     ctx.fillRect(0, y0, W, y1 - y0);
-
+    // Bands: each a vertical strip of its tone, strong near the surface and
+    // sinking into the gradient by 900 m. Light tones fade sooner.
+    var fadeY = depthToY(1600), lightFadeY = depthToY(1100);
+    stripes.forEach(function (st) {
+      var sway = Math.sin(now / 13000 + st.phase) * 3;
+      var c = mix(TONES[st.tone], [4, 10, 22], night * 0.6);
+      var top = st.tone <= 1 ? 0.5 : 0.42, far = st.tone <= 1 ? lightFadeY : fadeY;
+      var lg = ctx.createLinearGradient(0, sy, 0, far);
+      lg.addColorStop(0, rgb(c, top * (1 - night * 0.5)));
+      lg.addColorStop(0.3, rgb(c, top * 0.55 * (1 - night * 0.5)));
+      lg.addColorStop(1, rgb(c, (st.tone <= 1 ? 0.05 : 0.14) * (1 - night * 0.5)));
+      ctx.fillStyle = lg;
+      ctx.fillRect(st.x + sway, sy, st.w, Math.max(0, far - sy));
+    });
     drawRocks(0.6);
-
-    // Light shafts, fading by 420 m, dimmer at night.
-    var fadeY = depthToY(420);
-    if (fadeY > 0 && night < 0.95) {
-      stripes.forEach(function (s) {
-        var sway = Math.sin(now / 11000 + s.phase) * 8;
-        var a = s.a * (1 - night * 0.85);
-        var lg = ctx.createLinearGradient(0, sy, 0, fadeY);
-        lg.addColorStop(0, "rgba(225, 247, 252, " + a.toFixed(3) + ")");
-        lg.addColorStop(0.35, "rgba(225, 247, 252, " + (a * 0.5).toFixed(3) + ")");
-        lg.addColorStop(1, "rgba(225, 247, 252, 0)");
-        ctx.fillStyle = lg;
-        ctx.beginPath();
-        ctx.moveTo(s.x + sway, sy);
-        ctx.lineTo(s.x + sway + s.w, sy);
-        ctx.lineTo(s.x + sway + s.w + s.tilt * (fadeY - sy), fadeY);
-        ctx.lineTo(s.x + sway + s.tilt * (fadeY - sy), fadeY);
-        ctx.closePath();
-        ctx.fill();
-      });
-    }
 
     // Kelp on the shelf.
     ctx.strokeStyle = "rgba(20, 70, 70, 0.9)";
@@ -276,8 +306,9 @@
     if (sy > -4 && sy < H + 4) {
       ctx.fillStyle = "rgba(255, 255, 255, " + (0.8 - 0.5 * night).toFixed(2) + ")";
       ctx.fillRect(0, sy - 1, W, 2);
-      var band = ctx.createLinearGradient(0, sy, 0, sy + 40);
-      band.addColorStop(0, "rgba(255, 255, 255, " + (0.28 * (1 - night * 0.7)).toFixed(2) + ")");
+      var band = ctx.createLinearGradient(0, sy, 0, sy + 110);
+      band.addColorStop(0, "rgba(255, 255, 255, " + (0.55 * (1 - night * 0.7)).toFixed(2) + ")");
+      band.addColorStop(0.35, "rgba(255, 255, 255, " + (0.22 * (1 - night * 0.7)).toFixed(2) + ")");
       band.addColorStop(1, "rgba(255, 255, 255, 0)");
       ctx.fillStyle = band;
       ctx.fillRect(0, sy, W, 40);
@@ -415,7 +446,7 @@
   };
   function shadeOf(w, near) { return (SHADES[w.kind] || SHADES.sperm)[near ? "near" : "far"]; }
 
-  function drawMesh(kind, shade, seamAlpha) {
+  function drawMesh(kind, shade, seamAlpha, flat) {
     var m = MESH[kind] || MESH.sperm;
     ctx.lineJoin = "round";
     m.facets.forEach(function (f) {
@@ -430,23 +461,25 @@
         ctx.stroke();
       }
     });
-    if (m.grooves) {
+    if (m.grooves && !flat) {
       ctx.strokeStyle = "rgba(190, 225, 240, " + (seamAlpha * 0.9).toFixed(2) + ")";
       ctx.lineWidth = 0.4;
       m.grooves.forEach(function (g) { ctx.beginPath(); ctx.moveTo(g[0], g[1]); ctx.lineTo(g[2], g[3]); ctx.stroke(); });
     }
-    ctx.fillStyle = "rgba(215, 238, 248, 0.9)";
-    ctx.beginPath(); ctx.arc(m.eye[0], m.eye[1], 1.1, 0, Math.PI * 2); ctx.fill();
+    if (!flat) {
+      ctx.fillStyle = "rgba(215, 238, 248, 0.9)";
+      ctx.beginPath(); ctx.arc(m.eye[0], m.eye[1], 1.1, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
-  function drawWhale(x, y, pitch, scale, shade, alpha, kind) {
+  function drawWhale(x, y, pitch, scale, shade, alpha, kind, flat) {
     var m = MESH[kind] || MESH.sperm;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
     ctx.rotate(pitch);
     ctx.scale(scale * m.box, scale * m.box);
-    drawMesh(kind, shade, alpha >= 1 ? 0.45 : 0.15);
+    drawMesh(kind, shade, flat ? 0 : 0.45, flat);
     ctx.restore();
   }
 
@@ -533,11 +566,13 @@
 
     var hx = hero ? hero.x0 + Math.sin(now / 15000) * hero.drift : W / 2;
     var hy = hero ? depthToY(hero.cur) : H;
-    var hs = HERO_W / 100 * (W < 720 ? 0.62 : 1) * (1 + 0.3 * Math.min(1, (hero ? hero.cur : 0) / 1000)) * (hero && hero.kind === "blue" ? 1.2 : 1);
-    if (hero && hero.cur < 5) hy = sy + 9 * hs;
+    var hs = HERO_W / 100 * (W < 720 ? 0.55 : Math.min(1, W / 1280)) * (1 + 0.2 * Math.min(1, (hero ? hero.cur : 0) / 1000)) * (hero && hero.kind === "blue" ? 1.15 : 1);
+    if (hero && hero.cur < 5) hy = sy + 13 * hs * (MESH[hero.kind] || MESH.sperm).box;
 
-    whales.forEach(function (w) {
-      if (w === hero) return;
+    var far = whales.filter(function (w) { return w !== hero; })
+      .sort(function (a, b) { return Math.abs(a.cur - camDepth) - Math.abs(b.cur - camDepth); }).slice(0, FAR_MAX);
+    whales.forEach(function (w) { if (w !== hero && far.indexOf(w) < 0) { w.sx = undefined; } });
+    far.forEach(function (w) {
       var x = w.x0 + Math.sin(now / 16000 + w.x0) * w.drift;
       var y = depthToY(w.cur);
       w.sx = x; w.sy = y;
@@ -546,17 +581,20 @@
       var pitch = Math.max(-0.6, Math.min(0.6, ahead / 30 * 0.9));
       w.pitch += (pitch - w.pitch) * 0.04;
       var scale = FAR_W / 100 * w.far * (W < 720 ? 0.8 : 1) * (w.kind === "blue" ? 1.35 : w.kind === "fin" ? 1.15 : 1);
-      drawWhale(x, Math.max(sy + 8 * scale, y), w.pitch, scale, shadeOf(w, false), 0.5 + 0.35 * w.far, w.kind);
+      var sil = mix([10, 24, 44], [40, 90, 120], 1 - w.far);
+      var flat = [rgb(sil), rgb(sil), rgb(sil), rgb(sil), rgb(sil), rgb(mix(sil, [200, 215, 225], 0.5))];
+      drawWhale(x, Math.max(sy + 8 * scale, y), w.pitch, scale, flat, 0.55 + 0.3 * w.far, w.kind, true);
     });
 
     drawSquid(now);
     drawRocks(1);
+    drawCoral();
     drawFish(now, sy, hx, hy);
     drawBubbles(now, sy);
 
     if (hero) {
       var ahead2 = depthAt(hero, hero.sec + 30) - hero.cur;
-      var pitch2 = Math.max(-0.5, Math.min(0.5, ahead2 / 30 * 0.8));
+      var pitch2 = Math.max(-0.85, Math.min(0.85, ahead2 / 30 * 1.4));
       hero.pitch += (pitch2 - hero.pitch) * 0.03;
       drawTrail(hero, hx);
       drawWhale(hx, hy, hero.pitch, hs, shadeOf(hero, true), 1, hero.kind);
@@ -648,6 +686,21 @@
       requestAnimationFrame(draw);
     },
     speed: SPEED,
+    // Choose a species: the best diver of that kind becomes the hero now, and
+    // handovers stay inside the species. null means all.
+    chooseKind: function (kind) {
+      lockKind = kind;
+      if (!kind) return;
+      var best = null;
+      whales.forEach(function (w) {
+        if (w.kind !== kind) return;
+        var ahead = depthAt(w, w.sec + 900) - w.cur;
+        var score = w.cur + ahead * 1.5;
+        if (!best || score > best.score) best = { w: w, score: score };
+      });
+      if (best) { hero = best.w; layoutWhales(); userOffset = 0; }
+    },
+    kinds: function () { var k = []; whales.forEach(function (w) { if (k.indexOf(w.kind) < 0) k.push(w.kind); }); return k; },
     pause: function () { running = false; },
     resume: function () { if (!running) { running = true; last = performance.now(); requestAnimationFrame(draw); } },
     underFor: function (w) {

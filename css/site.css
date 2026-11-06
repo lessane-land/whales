@@ -127,10 +127,32 @@ body.below .pill { color: var(--foam); border-color: var(--line); background: va
   color: var(--foam-soft);
 }
 
+.species {
+  position: fixed;
+  left: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 60vw;
+}
+
+.species .pill { font-size: 12.5px; padding: 5px 11px; }
+
+.species .pill.active { border-color: rgba(159, 212, 228, 0.95); background: rgba(159, 212, 228, 0.22); }
+
+body.below .species .pill { color: var(--foam); border-color: var(--line); background: var(--panel); }
+
+body.below .species .pill.active { border-color: rgba(159, 212, 228, 0.95); background: rgba(159, 212, 228, 0.22); }
+
+body.idle .species { opacity: 0; pointer-events: none; }
+
+.species { transition: opacity 1.4s; }
+
 .hint {
   position: fixed;
   left: 16px;
-  bottom: max(20px, env(safe-area-inset-bottom));
+  bottom: max(64px, calc(env(safe-area-inset-bottom) + 48px));
   margin: 0;
   max-width: 220px;
   font-size: 12.5px;
@@ -198,7 +220,8 @@ body.below .hint { color: var(--foam); }
   .deep-depth { font-size: 84px; }
   .deep-who { font-size: 22px; }
   .deep-story { font-size: 20px; }
-  .hint { left: 24px; bottom: 28px; }
+  .hint { left: 24px; bottom: 72px; }
+  .species { left: 24px; bottom: 28px; }
   .sheet { align-items: center; }
   .sheet-body { border-bottom: 1px solid var(--line); border-radius: 18px; }
 }

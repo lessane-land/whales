@@ -106,6 +106,20 @@
     }
   }
 
+  var chosenKind = null;
+  function renderSpecies() {
+    var nav = document.getElementById("species");
+    nav.innerHTML = "";
+    [null].concat(Sea.kinds()).forEach(function (kind) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "pill" + (kind === chosenKind ? " active" : "");
+      b.textContent = t(kind ? "kind_" + kind : "kind_all");
+      b.addEventListener("click", function () { chosenKind = kind; Sea.chooseKind(kind); renderSpecies(); });
+      nav.appendChild(b);
+    });
+  }
+
   function start() {
     applyStatic();
     fetch(DATA_URL, { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (d) {
@@ -117,6 +131,7 @@
         onTick: onTick,
         tick: function (m) { return t("tick", { n: fmt(m) }); }
       });
+      renderSpecies();
       var hint = document.getElementById("hint");
       hint.textContent = t("hint");
       hint.hidden = false;
@@ -132,6 +147,7 @@
       lastHero = null;
       applyStatic();
       document.getElementById("hint").textContent = t("hint");
+      renderSpecies();
     });
     // Full screen: the page as a screen-saver. The pills fade after a while and come back on a touch.
     var fullBtn = document.getElementById("full");
