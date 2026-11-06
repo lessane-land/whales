@@ -348,95 +348,108 @@
     });
   }
 
-  // A blue whale: long, slim, flat head, tiny dorsal fin far back. 100 x 30 box, facing left.
-  function drawBlue(shade) {
-    ctx.fillStyle = shade[0];
-    ctx.beginPath();
-    ctx.moveTo(-52, 0); ctx.lineTo(-44, -7); ctx.lineTo(-20, -10); ctx.lineTo(8, -9); ctx.lineTo(28, -6);
-    ctx.lineTo(30, -11); ctx.lineTo(34, -6); ctx.lineTo(44, -3); ctx.lineTo(52, -12); ctx.lineTo(47, 0); ctx.lineTo(52, 12);
-    ctx.lineTo(44, 3); ctx.lineTo(30, 6); ctx.lineTo(6, 9); ctx.lineTo(-22, 9); ctx.lineTo(-44, 6);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = shade[1];
-    ctx.beginPath(); ctx.moveTo(-44, -7); ctx.lineTo(-20, -10); ctx.lineTo(-24, 0); ctx.lineTo(-52, 0); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-20, -10); ctx.lineTo(8, -9); ctx.lineTo(4, 0); ctx.lineTo(-24, 0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = shade[2];
-    ctx.beginPath(); ctx.moveTo(8, -9); ctx.lineTo(28, -6); ctx.lineTo(30, 6); ctx.lineTo(4, 0); ctx.closePath(); ctx.fill();
-    // Throat grooves, the baleen whale's pleats.
-    ctx.strokeStyle = shade[2];
-    ctx.lineWidth = 0.8;
-    for (var i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(-46 + i * 2, 1 + i * 1.6); ctx.lineTo(-14 + i * 4, 3 + i * 1.5); ctx.stroke(); }
-    ctx.fillStyle = shade[1];
-    ctx.beginPath(); ctx.moveTo(-30, 8); ctx.lineTo(-22, 16); ctx.lineTo(-12, 9); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "rgba(200, 230, 240, 0.85)";
-    ctx.beginPath(); ctx.arc(-40, -2, 1.2, 0, Math.PI * 2); ctx.fill();
-  }
+  // Bodies as facet meshes, in the Buff's language: planes of four or five
+  // blues, light on the back, dark on the belly, thin pale seams between them.
+  // Each facet: a polygon in a 100 unit box facing left, and a shade index.
+  var MESH = {
+    sperm: {
+      facets: [
+        { p: [[-50, 2], [-47, -11], [-28, -13], [-30, -2]], s: 1 },
+        { p: [[-50, 2], [-30, -2], [-34, 10], [-48, 8]], s: 3 },
+        { p: [[-47, -11], [-20, -15], [-10, -6], [-28, -13]], s: 0 },
+        { p: [[-28, -13], [-10, -6], [-30, -2]], s: 2 },
+        { p: [[-20, -15], [10, -11], [2, -2], [-10, -6]], s: 1 },
+        { p: [[-30, -2], [-10, -6], [2, -2], [-2, 10], [-18, 13], [-34, 10]], s: 2 },
+        { p: [[-34, 10], [-18, 13], [-38, 12]], s: 4 },
+        { p: [[10, -11], [34, -5], [24, 2], [2, -2]], s: 0 },
+        { p: [[2, -2], [24, 2], [28, 7], [6, 12], [-2, 10]], s: 3 },
+        { p: [[34, -5], [46, -2], [40, 4], [28, 7], [24, 2]], s: 2 },
+        { p: [[46, -2], [54, -14], [44, 0]], s: 1 },
+        { p: [[44, 0], [54, 14], [40, 4], [46, -2]], s: 3 },
+        { p: [[-24, 10], [-19, 17], [-10, 12]], s: 4 }
+      ],
+      eye: [-41, 1], box: 1
+    },
+    blue: {
+      facets: [
+        { p: [[-52, 0], [-44, -7], [-26, -9], [-30, -1]], s: 1 },
+        { p: [[-52, 0], [-30, -1], [-34, 7], [-44, 6]], s: 3 },
+        { p: [[-44, -7], [-20, -10], [-6, -4], [-26, -9]], s: 0 },
+        { p: [[-20, -10], [8, -9], [4, -2], [-6, -4]], s: 1 },
+        { p: [[-30, -1], [-26, -9], [-6, -4], [4, -2], [0, 8], [-22, 9], [-34, 7]], s: 2 },
+        { p: [[8, -9], [28, -6], [22, 1], [4, -2]], s: 0 },
+        { p: [[4, -2], [22, 1], [30, 6], [6, 9], [0, 8]], s: 3 },
+        { p: [[28, -6], [30, -11], [34, -6]], s: 2 },
+        { p: [[28, -6], [34, -6], [44, -3], [44, 3], [30, 6], [22, 1]], s: 2 },
+        { p: [[44, -3], [56, -16], [47, 0]], s: 1 },
+        { p: [[47, 0], [56, 16], [44, 3]], s: 3 },
+        { p: [[-30, 8], [-22, 16], [-12, 9]], s: 4 }
+      ],
+      grooves: [[-46, 1, -14, 4], [-44, 3, -12, 6], [-42, 5, -14, 8]],
+      eye: [-40, -2], box: 1.25
+    },
+    fin: {
+      facets: [
+        { p: [[-52, 1], [-42, -7], [-24, -9], [-30, 0]], s: 1 },
+        { p: [[-52, 1], [-30, 0], [-34, 7], [-44, 6]], s: 5 },
+        { p: [[-42, -7], [-18, -10], [-6, -4], [-24, -9]], s: 0 },
+        { p: [[-18, -10], [10, -9], [6, -2], [-6, -4]], s: 1 },
+        { p: [[-30, 0], [-24, -9], [-6, -4], [6, -2], [0, 7], [-22, 8], [-34, 7]], s: 2 },
+        { p: [[10, -9], [26, -6], [22, 1], [6, -2]], s: 0 },
+        { p: [[6, -2], [22, 1], [30, 6], [6, 8], [0, 7]], s: 3 },
+        { p: [[26, -6], [27, -15], [33, -6]], s: 2 },
+        { p: [[26, -6], [33, -6], [44, -3], [44, 3], [30, 6], [22, 1]], s: 2 },
+        { p: [[44, -3], [55, -15], [47, 0]], s: 1 },
+        { p: [[47, 0], [55, 15], [44, 3]], s: 3 },
+        { p: [[-28, 8], [-21, 15], [-12, 8]], s: 4 }
+      ],
+      grooves: [[-44, 2, -14, 4], [-42, 4, -12, 6]],
+      eye: [-40, -2], box: 1.2
+    }
+  };
 
-  // A fin whale: like the blue but sharper, with a taller hooked dorsal fin.
-  function drawFin(shade) {
-    ctx.fillStyle = shade[0];
-    ctx.beginPath();
-    ctx.moveTo(-52, 1); ctx.lineTo(-42, -7); ctx.lineTo(-18, -10); ctx.lineTo(10, -9); ctx.lineTo(26, -6);
-    ctx.lineTo(27, -15); ctx.lineTo(33, -6); ctx.lineTo(44, -3); ctx.lineTo(52, -11); ctx.lineTo(47, 0); ctx.lineTo(52, 11);
-    ctx.lineTo(44, 3); ctx.lineTo(30, 6); ctx.lineTo(6, 8); ctx.lineTo(-22, 8); ctx.lineTo(-44, 6);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = shade[1];
-    ctx.beginPath(); ctx.moveTo(-42, -7); ctx.lineTo(-18, -10); ctx.lineTo(-22, 0); ctx.lineTo(-52, 1); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-18, -10); ctx.lineTo(10, -9); ctx.lineTo(6, 0); ctx.lineTo(-22, 0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = shade[2];
-    ctx.beginPath(); ctx.moveTo(10, -9); ctx.lineTo(26, -6); ctx.lineTo(30, 6); ctx.lineTo(6, 0); ctx.closePath(); ctx.fill();
-    // The fin whale's pale right jaw.
-    ctx.fillStyle = "rgba(220, 230, 235, 0.35)";
-    ctx.beginPath(); ctx.moveTo(-52, 1); ctx.lineTo(-30, 2); ctx.lineTo(-30, 7); ctx.lineTo(-44, 6); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = shade[1];
-    ctx.beginPath(); ctx.moveTo(-28, 8); ctx.lineTo(-21, 15); ctx.lineTo(-12, 8); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "rgba(200, 230, 240, 0.85)";
-    ctx.beginPath(); ctx.arc(-40, -2, 1.2, 0, Math.PI * 2); ctx.fill();
+  var SHADES = {
+    sperm: { near: ["#2f5276", "#223f5e", "#182f49", "#102238", "#0a1729", "#0a1729"], far: ["#3d6487", "#2f5272", "#24425f", "#1b344d", "#142a40", "#142a40"] },
+    blue:  { near: ["#8fb5cc", "#6c95b2", "#527a98", "#3d607c", "#2a475f", "#2a475f"], far: ["#8fb0c6", "#7199b3", "#5a8099", "#476882", "#36526a", "#36526a"] },
+    fin:   { near: ["#6f8ea6", "#56758d", "#415c74", "#2f465b", "#223445", "#c9d6dd"], far: ["#7693a9", "#5f7c93", "#4b647a", "#3a5064", "#2c3f50", "#b9c8d2"] }
+  };
+  function shadeOf(w, near) { return (SHADES[w.kind] || SHADES.sperm)[near ? "near" : "far"]; }
+
+  function drawMesh(kind, shade, seamAlpha) {
+    var m = MESH[kind] || MESH.sperm;
+    ctx.lineJoin = "round";
+    m.facets.forEach(function (f) {
+      ctx.fillStyle = shade[f.s];
+      ctx.beginPath();
+      f.p.forEach(function (pt, i) { if (i === 0) ctx.moveTo(pt[0], pt[1]); else ctx.lineTo(pt[0], pt[1]); });
+      ctx.closePath();
+      ctx.fill();
+      if (seamAlpha > 0) {
+        ctx.strokeStyle = "rgba(190, 225, 240, " + seamAlpha.toFixed(2) + ")";
+        ctx.lineWidth = 0.35;
+        ctx.stroke();
+      }
+    });
+    if (m.grooves) {
+      ctx.strokeStyle = "rgba(190, 225, 240, " + (seamAlpha * 0.9).toFixed(2) + ")";
+      ctx.lineWidth = 0.4;
+      m.grooves.forEach(function (g) { ctx.beginPath(); ctx.moveTo(g[0], g[1]); ctx.lineTo(g[2], g[3]); ctx.stroke(); });
+    }
+    ctx.fillStyle = "rgba(215, 238, 248, 0.9)";
+    ctx.beginPath(); ctx.arc(m.eye[0], m.eye[1], 1.1, 0, Math.PI * 2); ctx.fill();
   }
 
   function drawWhale(x, y, pitch, scale, shade, alpha, kind) {
-    if (kind === "blue" || kind === "fin") {
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.translate(x, y);
-      ctx.rotate(pitch);
-      ctx.scale(scale * 1.25, scale * 1.25);
-      if (kind === "blue") drawBlue(shade); else drawFin(shade);
-      ctx.restore();
-      return;
-    }
+    var m = MESH[kind] || MESH.sperm;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
     ctx.rotate(pitch);
-    ctx.scale(scale, scale);
-    ctx.fillStyle = shade[0];
-    ctx.beginPath();
-    ctx.moveTo(-50, 2); ctx.lineTo(-46, -12); ctx.lineTo(-20, -15); ctx.lineTo(10, -11); ctx.lineTo(34, -4);
-    ctx.lineTo(46, -2); ctx.lineTo(50, -10); ctx.lineTo(44, 0); ctx.lineTo(50, 10); ctx.lineTo(40, 4);
-    ctx.lineTo(28, 7); ctx.lineTo(6, 12); ctx.lineTo(-18, 13); ctx.lineTo(-38, 12); ctx.lineTo(-48, 8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = shade[1];
-    ctx.beginPath(); ctx.moveTo(-46, -12); ctx.lineTo(-20, -15); ctx.lineTo(-24, 0); ctx.lineTo(-50, 2); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-20, -15); ctx.lineTo(10, -11); ctx.lineTo(0, 0); ctx.lineTo(-24, 0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = shade[2];
-    ctx.beginPath(); ctx.moveTo(10, -11); ctx.lineTo(34, -4); ctx.lineTo(28, 7); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = shade[1];
-    ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(0, 0); ctx.lineTo(6, 12); ctx.lineTo(-18, 13); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-26, 12); ctx.lineTo(-18, 21); ctx.lineTo(-8, 13); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "rgba(200, 230, 240, 0.85)";
-    ctx.beginPath(); ctx.arc(-40, 2, 1.3, 0, Math.PI * 2); ctx.fill();
+    ctx.scale(scale * m.box, scale * m.box);
+    drawMesh(kind, shade, alpha >= 1 ? 0.45 : 0.15);
     ctx.restore();
   }
 
-  var SHADES = {
-    sperm: { near: ["#071428", "#0d2140", "#153358"], far: ["#0f2d4e", "#15395f", "#1c4670"] },
-    blue:  { near: ["#2a4a6a", "#36597c", "#476b8e"], far: ["#3a5f82", "#466d90", "#557c9e"] },
-    fin:   { near: ["#1c2e42", "#273d55", "#334d68"], far: ["#2b4560", "#365472", "#426283"] }
-  };
-  function shadeOf(w, near) { return (SHADES[w.kind] || SHADES.sperm)[near ? "near" : "far"]; }
 
   function drawTrail(w, x) {
     var pxPerSec = (W < 720 ? 3.2 : 5.5) / 60;
@@ -576,6 +589,15 @@
     return best;
   }
 
+  function gallery() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = "#1b5a7e";
+    ctx.fillRect(0, 0, W, H);
+    ["sperm", "blue", "fin"].forEach(function (k, i) {
+      drawWhale(W / 2, H * (0.2 + 0.3 * i), 0, Math.min(W, 1100) / 100 * 0.8, SHADES[k].near, 1, k);
+    });
+  }
+
   window.Sea = {
     init: function (el, dataIn, opts) {
       canvas = el;
@@ -620,6 +642,7 @@
         }
         dragY = null;
       });
+      if (opts && opts.gallery) { gallery(); return; }
       running = true;
       last = performance.now();
       requestAnimationFrame(draw);

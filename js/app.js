@@ -113,7 +113,7 @@
       d.whales.forEach(function (w) { byId[w.id] = w; });
       var q = new URLSearchParams(location.search);
       Sea.init(document.getElementById("sea"), d, {
-        whale: q.get("whale"), at: q.has("at") ? parseFloat(q.get("at")) : undefined,
+        whale: q.get("whale"), at: q.has("at") ? parseFloat(q.get("at")) : undefined, gallery: q.has("gallery"),
         onTick: onTick,
         tick: function (m) { return t("tick", { n: fmt(m) }); }
       });
