@@ -55,28 +55,38 @@ camera.position.set(0, 0, 1000); camera.lookAt(0, 0, 0);
 const sun = new THREE.DirectionalLight(0xffffff, NIGHT ? 1.6 : 2.6); sun.position.set(-0.3, 1, 0.8); scene.add(sun);
 const fill = new THREE.DirectionalLight(NIGHT ? 0x6a90b0 : 0x7fc0e0, 0.5); fill.position.set(0.6, -0.4, 0.5); scene.add(fill);
 scene.add(new THREE.AmbientLight(NIGHT ? 0x1a2a44 : 0x2a4a6a, NIGHT ? 1.2 : 1.6));
+const rim = new THREE.DirectionalLight(0xbfe8ff, NIGHT ? 1.2 : 0.9); rim.position.set(0.4, 0.6, -1); scene.add(rim);
 
-// Humpback as a lofted body: stations along x (head at -54, tail joint at 44) with
-// vertical half-height and width, and where the belly starts (for the pale colour).
+// Humpback as a lofted body drawn from real proportions: a side profile (top line
+// and belly line, both absolute) and a plan width, station by station along x.
+// Head tip at -50, fluke joint at +46; length 100, height about 24 (a humpback is stout).
+// [x, top, bottom, half width, top exponent, belly exponent]
+// exponent < 1 gives a boxy flat section (the rostrum, the throat), > 1 a ridge (the tail stock keel).
 const STATIONS = [
-  [-56, 1, 0.5], [-54, 4, 3], [-48, 8, 6], [-40, 11, 8.5], [-30, 13, 10], [-18, 14, 11], [-6, 15, 11.5],
-  [6, 16, 11], [16, 15, 10], [26, 12, 8], [36, 7, 5], [44, 4, 3.5]
+  [-50, 0.8, -1.6, 1.2, 0.5, 0.7], [-48, 1.6, -4.2, 3.6, 0.45, 0.7], [-45, 2.6, -6.8, 6, 0.45, 0.75], [-41, 3.6, -9.2, 8.4, 0.5, 0.8],
+  [-35, 5, -11.2, 10.6, 0.6, 0.85], [-28, 7, -12.4, 12, 0.75, 0.9], [-19, 9.2, -12.6, 12.6, 0.9, 0.95],
+  [-8, 10.4, -12.2, 12.2, 1, 1], [3, 11, -10.8, 11, 1, 1], [11, 11.8, -8.8, 9.2, 1.1, 1.05], [17, 11.4, -7, 7, 1.3, 1.1],
+  [23, 8.8, -5.2, 5, 1.5, 1.2], [29, 6.6, -3.8, 3.5, 1.6, 1.3], [35, 5, -2.8, 2.6, 1.6, 1.3], [41, 3.6, -1.8, 2, 1.5, 1.3], [46, 2.6, -1.2, 1.8, 1.4, 1.3]
 ];
 const DARK = new THREE.Color(0x14263e), MID = new THREE.Color(0x3b5f84), LIGHT = new THREE.Color(0x7fa3c2), BELLY = new THREE.Color(0xd6e2e8);
 
-function loft(stations, segs = 14) {
+function loft(stations, segs = 18) {
   const pos = [], col = [], idx = [];
   stations.forEach((s, i) => {
-    const [x, ry, rz] = s;
-    const yOff = i < 7 ? (ry * 0.15) : -(ry * 0.1);   // the back carries the hump, the tail stock rises
+    const [x, top, bottom, rz, eT, eB] = s;
     for (let k = 0; k < segs; k++) {
       const a = (k / segs) * Math.PI * 2;
-      const y = Math.sin(a) * ry * (Math.sin(a) > 0 ? 1 : 0.9) - yOff;   // slightly flatter belly
+      const up = Math.sin(a);
+      const y = up > 0 ? Math.pow(up, eT) * top : Math.pow(-up, eB) * bottom;
       const z = Math.cos(a) * rz;
       pos.push(x, y, z);
-      // Colour by height: back dark, flank mid, belly pale (only on the front two thirds, the throat pleats).
-      const up = Math.sin(a);
-      const c = up > 0.3 ? DARK.clone().lerp(MID, 0.3 * (1 - up)) : up > -0.3 ? MID.clone().lerp(DARK, 0.2) : (x < 10 ? BELLY : MID.clone().lerp(LIGHT, 0.5));
+      // Colour by height: back dark, flank mid, the belly and the whole lower jaw pale,
+      // the throat pleats as alternating facets from the chin to the navel.
+      let c;
+      if (up > 0.4) c = DARK.clone().lerp(MID, 0.3 * (1 - up));
+      else if (up > -0.15) c = MID.clone().lerp(DARK, 0.2);
+      else if (x < 8) c = (k % 2 ? BELLY : BELLY.clone().lerp(MID, 0.2));
+      else c = MID.clone().lerp(LIGHT, 0.5);
       col.push(c.r, c.g, c.b);
     }
   });
@@ -97,46 +107,57 @@ function loft(stations, segs = 14) {
 const matBody = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, metalness: 0.05 });
 const matFin = new THREE.MeshStandardMaterial({ color: 0x1c324c, flatShading: true, roughness: 0.9 });
 const matFinLight = new THREE.MeshStandardMaterial({ color: 0x2e4d6e, flatShading: true, roughness: 0.9 });
+const matFinPale = new THREE.MeshStandardMaterial({ color: 0xcfdde4, flatShading: true, roughness: 0.9 });
 const matKnob = new THREE.MeshStandardMaterial({ color: 0x0c182a, flatShading: true });
 
-function plate(points, depth, mat) {
+function plate(points, depth, mat, capMat) {
   const shape = new THREE.Shape(points.map(p => new THREE.Vector2(p[0], p[1])));
-  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: depth * 0.6, bevelSize: 1.2, bevelSegments: 1, steps: 1 });
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: depth * 0.5, bevelSize: 0.7, bevelSegments: 1, steps: 1 });
   g.translate(0, 0, -depth / 2);
-  return new THREE.Mesh(g, mat);
+  return new THREE.Mesh(g, capMat ? [capMat, mat] : mat);
 }
 
 const whale = new THREE.Group();
 const body = new THREE.Mesh(loft(STATIONS), matBody); whale.add(body);
-// Fluke: wide, scalloped, a flat plate rotated to lie horizontal (we see it edge-on from the side, so tilt it toward the camera).
+// Fluke: two blades with a scalloped trailing edge, lying almost flat, tilted so the camera sees their face.
 const fluke = new THREE.Group();
-const flukeMesh = plate([[0, 0], [8, -7], [16, -15], [25, -22], [28, -20], [22, -12], [16, -6], [12, -2], [12, 2], [16, 6], [22, 12], [28, 20], [25, 22], [16, 15], [8, 7]], 1.6, matFin);
-flukeMesh.rotation.x = Math.PI / 2 - 0.55;   // mostly horizontal, tilted so the camera sees its face
-fluke.add(flukeMesh); fluke.position.set(44, 1, 0); whale.add(fluke);
-// Dorsal fin on the hump.
-const dorsal = plate([[0, 0], [3, 7], [8, 6], [8, 0]], 1.2, matFinLight); dorsal.position.set(14, 15, 0); whale.add(dorsal);
-// Pectorals: long, with bumps along the leading edge; the near one angled toward the camera.
+function blade(sign) {
+  const m = plate([[0, 0], [5, sign * 7], [12, sign * 15], [20, sign * 23], [30, sign * 29], [34, sign * 28], [29, sign * 20], [24, sign * 13], [20, sign * 8], [16, sign * 4], [13, 0]], 0.7, matFin, matFinPale);
+  m.rotation.x = Math.PI / 2 - 0.5;
+  m.rotation.y = sign * 0.16;
+  return m;
+}
+fluke.add(blade(1)); fluke.add(blade(-1)); fluke.position.set(46, 0.6, 0); whale.add(fluke);
+// Dorsal fin: small and falcate, sitting on the hump.
+const dorsal = plate([[0, 0], [2, 2.6], [4.5, 4.2], [6.5, 3.6], [7.5, 2], [9, 0]], 0.9, matFinLight); dorsal.position.set(12.5, 10.6, 0); whale.add(dorsal);
+// Pectorals: a third of the body, paddle shaped, knobs along the leading edge, pale underside on the near one.
 function pectoral(sign) {
-  const p = plate([[0, 0], [10, -6], [22, -15], [34, -28], [40, -40], [36, -40], [26, -30], [14, -18], [4, -8]], 1.4, matFinLight);
+  const p = plate([[0, 0], [4, -4], [9, -10], [14, -18], [19, -27], [24, -36], [28, -43], [27, -46], [22, -44], [15, -36], [9, -25], [4, -13], [1, -5]], 0.9, matFinLight, sign > 0 ? matFinPale : null);
   const g = new THREE.Group(); g.add(p);
-  for (let i = 0; i < 5; i++) { const k = new THREE.Mesh(new THREE.SphereGeometry(1.1, 5, 4), matKnob); k.position.set(7 + i * 7, -(3 + i * 6.5), 0); g.add(k); }
-  g.position.set(-28, -9, sign * 9); g.rotation.set(sign * 0.9, 0, -0.1);
+  for (let i = 0; i < 7; i++) { const k = new THREE.Mesh(new THREE.SphereGeometry(0.7, 5, 4), matKnob); k.position.set(3 + i * 3.6, -(2.5 + i * 6.2), 0); g.add(k); }
+  // Hangs from the flank behind the eye, sweeping back and down, opened toward the camera on the near side.
+  g.position.set(-25, -9.5, sign * 10.5); g.rotation.set(sign * 0.75, 0, 0.8);
   return g;
 }
 whale.add(pectoral(1)); whale.add(pectoral(-1));
-// Knobs on the head and jaw.
-[[-52, 5, 0], [-49, 8, 2], [-45, 10, -2], [-41, 12, 1], [-36, 13, -1], [-31, 14, 2], [-53, -4, 2], [-49, -7, -2], [-44, -9, 1]].forEach(k => { const m = new THREE.Mesh(new THREE.SphereGeometry(1.2, 5, 4), matKnob); m.position.set(k[0], k[1], k[2] + 8); whale.add(m); });
-// Eye.
-const eye = new THREE.Mesh(new THREE.SphereGeometry(1.3, 6, 5), matKnob); eye.position.set(-46, 3, 11); whale.add(eye);
+// Knobs (tubercles) in rows on the rostrum: a midline ridge and two side rows, and along the chin.
+[[-48, 1.9, 0], [-45, 2.9, 0], [-42, 3.6, 0], [-39, 4.3, 0], [-36, 4.9, 0], [-33, 5.5, 0],
+ [-46, 2.5, 4.5], [-43, 3.2, 6.6], [-40, 3.9, 8.1], [-37, 4.6, 9.4], [-46, 2.5, -4.5], [-43, 3.2, -6.6], [-40, 3.9, -8.1], [-37, 4.6, -9.4],
+ [-48, -4.4, 1], [-46, -6.2, 2.5], [-44, -7.6, 4], [-42, -8.8, 5.5]].forEach(k => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.7, 5, 4), matKnob); m.position.set(k[0], k[1], k[2]); whale.add(m); });
+// The mouth: a long line from the tip of the rostrum back along the jaw, curving up toward the eye.
+const mouthCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(-50, -0.8, 1), new THREE.Vector3(-45, -2.4, 5.8), new THREE.Vector3(-39, -4.2, 9), new THREE.Vector3(-33, -5.6, 10.8), new THREE.Vector3(-29, -5.2, 11.6)]);
+const mouth = new THREE.Mesh(new THREE.TubeGeometry(mouthCurve, 16, 0.45, 5, false), matKnob); whale.add(mouth);
+// Eye: just above and behind the corner of the mouth.
+const eye = new THREE.Mesh(new THREE.SphereGeometry(0.9, 6, 5), matKnob); eye.position.set(-29, -3.2, 11.6); whale.add(eye);
 
-const scale = Math.min(W, 1280) / 100 * 0.62;
+const scale = Math.min(W, 1280) / 100 * 0.5;
 whale.scale.setScalar(scale);
 scene.add(whale);
 
 // Pose: diving steeply, head down, the flukes up near the surface. World y is up; the surface is at sy.
 const headDown = params.has("level") ? 0 : 1.05;
 whale.rotation.z = headDown;   // head (at -x) goes down when rotated positive around z
-whale.position.set(-W * 0.1, H / 2 - sy - H * 0.36, 0);
+whale.position.set(-W * 0.1, H / 2 - sy - H * 0.3, 0);
 
 let t = 0;
 function frame() {
