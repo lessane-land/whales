@@ -26,6 +26,7 @@
     document.documentElement.lang = lang;
     document.querySelectorAll("[data-i18n]").forEach(function (el) { el.textContent = t(el.dataset.i18n); });
     document.getElementById("lang").textContent = t("lang_switch");
+    if (window.Sound) document.getElementById("sound").textContent = t(Sound.enabled() ? "sound_off" : "sound_on");
     lastKey = "";
   }
 
@@ -50,8 +51,13 @@
     return t("phase_bottom", { d: fmt(Math.round(d / 10) * 10), n: under });
   }
 
-  var lastKey = "", wasBelow = null, lastHero = null, hintUntil = 0;
+  var lastKey = "", wasBelow = null, lastHero = null, hintUntil = 0, lastDepth = 0;
   function onTick(hero, whales, surfaceY, info) {
+    if (hero && window.Sound) {
+      var surfaced = lastDepth > 50 && hero.cur < 4;
+      Sound.update(hero.cur, info ? info.slope : 0, surfaced);
+      lastDepth = hero.cur;
+    }
     var below = surfaceY < 70 || (info && info.night > 0.5);
     if (below !== wasBelow) { wasBelow = below; document.body.classList.toggle("below", below); }
     if (!hero) return;
@@ -103,6 +109,11 @@
       lastHero = null;
       applyStatic();
       document.getElementById("hint").textContent = t("hint");
+    });
+    document.getElementById("sound").addEventListener("click", function () {
+      var on = Sound.toggle();
+      document.getElementById("sound").textContent = t(on ? "sound_off" : "sound_on");
+      document.getElementById("sound").classList.toggle("active", on);
     });
     document.getElementById("credits-open").addEventListener("click", function () {
       document.getElementById("credits").hidden = false;
