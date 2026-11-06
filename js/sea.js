@@ -583,19 +583,34 @@
     ctx.stroke();
   }
 
+  var plume = [];
+  seed = 5;
+  for (var pi = 0; pi < 34; pi++) plume.push({ a: -Math.PI / 2 + (rnd() - 0.5) * 0.7, v: 0.55 + rnd() * 0.75, r: 1.5 + rnd() * 3, d: rnd() * 0.25 });
+
   function drawBlow(now, x, y, hs) {
-    var k = (blowUntil - now) / 2000;
-    if (k <= 0) return;
-    var grow = 1 - k;
+    var k = 1 - (blowUntil - now) / 2000;   // 0 at the start of the breath, 1 at the end
+    if (k < 0 || k > 1) return;
     ctx.save();
-    ctx.globalAlpha = 0.8 * Math.min(1, k * 1.6);
     ctx.fillStyle = "#ffffff";
-    for (var i = 0; i < 11; i++) {
-      var ang = -Math.PI / 2 - 0.5 + i * 0.1 + grow * 0.25;
-      var len = (36 + (i % 4) * 14) * (0.3 + grow * 0.9) * hs;
+    plume.forEach(function (p) {
+      var t = Math.max(0, k - p.d) / (1 - p.d);
+      if (t <= 0 || t > 1) return;
+      var len = 110 * hs * p.v;
+      var px = x + Math.cos(p.a) * len * t + (p.a + Math.PI / 2) * 30 * t * t;
+      var py = y + Math.sin(p.a) * len * t + 90 * hs * t * t;   // up, then gravity
+      ctx.globalAlpha = 0.85 * (1 - t) * (0.5 + 0.5 * Math.min(1, t * 4));
       ctx.beginPath();
-      ctx.arc(x + Math.cos(ang) * len, y + Math.sin(ang) * len, (2 + grow * 3.5) * hs, 0, Math.PI * 2);
+      ctx.arc(px, py, (p.r + t * 5) * hs, 0, Math.PI * 2);
       ctx.fill();
+    });
+    // Mist that hangs after the burst.
+    if (k > 0.3) {
+      var mg = ctx.createRadialGradient(x, y - 40 * hs, 0, x, y - 40 * hs, 70 * hs);
+      mg.addColorStop(0, "rgba(255, 255, 255, " + (0.35 * (1 - k)).toFixed(3) + ")");
+      mg.addColorStop(1, "rgba(255, 255, 255, 0)");
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = mg;
+      ctx.fillRect(x - 80 * hs, y - 120 * hs, 160 * hs, 130 * hs);
     }
     ctx.restore();
   }
@@ -659,14 +674,14 @@
       if (up) {
         // Breathing: her back and blowhole ride above the line, with a slow bob.
         hy = sy + 7 * hs * hb + Math.sin(now / 1700) * 2.5;
-        if (now > nextBreath) { blowUntil = now + 2000; nextBreath = now + (SPEED === 1 ? 9000 + Math.random() * 5000 : 2200 + Math.random() * 1600); }
+        if (now > nextBreath) { blowUntil = now + 2000; nextBreath = now + (SPEED === 1 ? 9000 + Math.random() * 5000 : 2600 + Math.random() * 1800); }
         wasUp = true;
       } else {
         if (wasUp && hero.cur > 6) { flukeUntil = now + (SPEED === 1 ? 2800 : 1400); flukeStart = now; wasUp = false; }
         if (hero.cur > 30) flukeUntil = 0;
         if (!flukeUp) {
           // Keep the whole body under the surface line, whatever her angle.
-          var reach = 55 * hs * hb * Math.abs(Math.sin(hero.pitch)) + 14 * hs * hb;
+          var reach = 78 * hs * hb * Math.abs(Math.sin(hero.pitch)) + 16 * hs * hb * Math.cos(hero.pitch);
           if (hy - reach < sy) hy = sy + reach;
         }
       }
@@ -699,9 +714,13 @@
     if (hero) {
       var ahead2 = depthAt(hero, hero.sec + 30) - hero.cur;
       var pitch2 = -Math.max(-1.1, Math.min(1.1, ahead2 / 30 * 1.6));
-      // Near the surface she levels out, so her tail never leaves the water.
-      pitch2 *= Math.min(1, hero.cur / 140);
-      hero.pitch += (pitch2 - hero.pitch) * 0.03;
+      // She pitches only as steeply as the water above her allows: the tail tip
+      // is 78 units from her centre, and it must stay under the surface line.
+      var room = depthToY(hero.cur) - sy - 6, half = 78 * hs * hb;
+      var maxPitch = room <= 0 ? 0 : Math.asin(Math.min(1, room / half));
+      if (pitch2 < -maxPitch) pitch2 = -maxPitch;
+      if (pitch2 > maxPitch) pitch2 = maxPitch;
+      hero.pitch += (pitch2 - hero.pitch) * 0.06;
       hero.speed = Math.min(1, Math.abs(ahead2) / 40);
       drawTrail(hero, hx);
       if (flukeUp) {
