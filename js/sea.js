@@ -674,7 +674,7 @@
       if (up) {
         // Breathing: her back and blowhole ride above the line, with a slow bob.
         hy = sy + 7 * hs * hb + Math.sin(now / 1700) * 2.5;
-        if (now > nextBreath) { blowUntil = now + 2000; nextBreath = now + (SPEED === 1 ? 9000 + Math.random() * 5000 : 2600 + Math.random() * 1800); }
+        if (now > nextBreath) { blowUntil = now + 2000; nextBreath = now + Math.max(2600, (9000 + Math.random() * 5000) / Math.sqrt(SPEED)) + Math.random() * 1200; }
         wasUp = true;
       } else {
         if (wasUp && hero.cur > 6) { flukeUntil = now + (SPEED === 1 ? 2800 : 1400); flukeStart = now; wasUp = false; }
@@ -844,9 +844,9 @@
     speed: SPEED,
     // Real time: one of your seconds is one of hers, and every whale's clock is
     // set to your own local hour, so her night is your night.
-    setRealTime: function (real) {
-      SPEED = real ? 1 : 90;
-      if (!real) return;
+    setSpeed: function (x) {
+      SPEED = x;
+      if (x !== 1) return;
       var now = new Date(), hour = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
       whales.forEach(function (w) {
         if (!w.start) return;
@@ -858,6 +858,7 @@
       pickHero(true);
     },
     realTime: function () { return SPEED === 1; },
+    getSpeed: function () { return SPEED; },
     // Choose a species: the best diver of that kind becomes the hero now, and
     // handovers stay inside the species. null means all.
     chooseKind: function (kind) {

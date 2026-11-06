@@ -27,7 +27,8 @@
     document.querySelectorAll("[data-i18n]").forEach(function (el) { el.textContent = t(el.dataset.i18n); });
     document.getElementById("lang").textContent = t("lang_switch");
     if (window.Sound) document.getElementById("sound").textContent = t(Sound.enabled() ? "sound_off" : "sound_on");
-    if (window.Sea && Sea.realTime) document.getElementById("real").textContent = t(Sea.realTime() ? "real_on" : "real_off");
+    if (window.Sea && Sea.getSpeed) applySpeed(Sea.getSpeed());
+    if (window.Sea && Sea.kinds) renderSpecies();
     document.getElementById("screen-exit").textContent = t("screen_off");
     lastKey = "";
   }
@@ -123,7 +124,7 @@
     if (lt) {
       var ds = new Intl.DateTimeFormat(locale(), { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(lt);
       var ts = new Intl.DateTimeFormat(locale(), { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }).format(lt);
-      document.getElementById("deep-sub").textContent = t("clock", { date: ds, time: ts }) + (Sea.realTime() ? " · " + t("speed_real") : "");
+      document.getElementById("deep-sub").textContent = t("clock", { date: ds, time: ts }) + " · " + (Sea.realTime() ? t("speed_real") : t("speed_fast", { x: Sea.getSpeed() }));
     }
   }
 
@@ -161,45 +162,41 @@
   function renderAbout(kind) {
     aboutKind = kind;
     cancelAnimationFrame(portraitRaf);
-    var nav = document.getElementById("about-kinds");
-    nav.innerHTML = "";
-    Sea.kinds().forEach(function (k) {
-      var b = document.createElement("button");
-      b.type = "button";
-      b.className = "pill" + (k === kind ? " active" : "");
-      b.textContent = t("sp_" + k + "_name");
-      b.addEventListener("click", function () { renderAbout(k); });
-      nav.appendChild(b);
-    });
     document.getElementById("about-name").textContent = t("sp_" + kind + "_name");
     document.getElementById("about-latin").textContent = t("sp_" + kind + "_latin");
     document.getElementById("about-status").textContent = t("sp_" + kind + "_status").replace(/\.$/, "");
     document.getElementById("about-here").textContent = hereText(kind);
     var grid = document.getElementById("about-grid");
     grid.innerHTML = "";
-    [["size", false], ["weight", false], ["lives", true], ["dives", true], ["eats", false], ["sounds", false]].forEach(function (f) {
-      var card = document.createElement("article");
-      card.className = "about-card" + (f[1] ? " wide" : "");
-      card.innerHTML = '<svg><use href="#i-' + f[0] + '"/></svg><div><h3></h3><p></p></div>';
-      card.querySelector("h3").textContent = t("sp_" + f[0]);
-      card.querySelector("p").textContent = t("sp_" + kind + "_" + f[0]);
-      grid.appendChild(card);
+    ["size", "weight", "lives", "dives", "eats", "sounds"].forEach(function (f) {
+      var dt = document.createElement("dt"), dd = document.createElement("dd");
+      dt.innerHTML = '<svg><use href="#i-' + f + '"/></svg><span></span>';
+      dt.querySelector("span").textContent = t("sp_" + f);
+      dd.textContent = t("sp_" + kind + "_" + f);
+      grid.appendChild(dt); grid.appendChild(dd);
     });
     drawPortrait(kind);
   }
 
   var chosenKind = null;
+  function kindList() { return [null].concat(Sea.kinds()); }
+  function kindName(kind) { return t(kind ? "kind_" + kind : "kind_all"); }
   function renderSpecies() {
-    var nav = document.getElementById("species");
-    nav.innerHTML = "";
-    [null].concat(Sea.kinds()).forEach(function (kind) {
-      var b = document.createElement("button");
-      b.type = "button";
-      b.className = "pill" + (kind === chosenKind ? " active" : "");
-      b.textContent = t(kind ? "kind_" + kind : "kind_all");
-      b.addEventListener("click", function () { chosenKind = kind; Sea.chooseKind(kind); renderSpecies(); });
-      nav.appendChild(b);
-    });
+    document.getElementById("species-label").textContent = kindName(chosenKind);
+  }
+  function stepSpecies(dir) {
+    var list = kindList(), i = list.indexOf(chosenKind);
+    chosenKind = list[(i + dir + list.length) % list.length];
+    Sea.chooseKind(chosenKind);
+    renderSpecies();
+  }
+
+  var SPEEDS = [1, 10, 30, 90];
+  function applySpeed(x) {
+    Sea.setSpeed(x);
+    document.getElementById("speed").textContent = x === 1 ? t("speed_real_label") : t("speed_label", { x: x });
+    document.getElementById("speed").classList.toggle("active", x !== 90);
+    lastKey = "";
   }
 
   function start() {
@@ -214,7 +211,9 @@
         tick: function (m) { return t("tick", { n: fmt(m) }); }
       });
       renderSpecies();
-      try { if (localStorage.getItem("real") === "1") document.getElementById("real").click(); } catch (e) { /* private mode */ }
+      var saved = 90;
+      try { saved = parseInt(localStorage.getItem("speed") || "90", 10); } catch (e) { /* private mode */ }
+      applySpeed(SPEEDS.indexOf(saved) >= 0 ? saved : 90);
       var hint = document.getElementById("hint");
       hint.textContent = t("hint");
       hint.hidden = false;
@@ -295,14 +294,16 @@
     ["pointermove", "pointerdown", "keydown", "touchstart"].forEach(function (ev) { document.addEventListener(ev, wake, { passive: true }); });
     wake();
 
-    document.getElementById("real").addEventListener("click", function () {
-      var real = !Sea.realTime();
-      Sea.setRealTime(real);
-      try { localStorage.setItem("real", real ? "1" : "0"); } catch (e) { /* private mode */ }
-      document.getElementById("real").textContent = t(real ? "real_on" : "real_off");
-      document.getElementById("real").classList.toggle("active", real);
-      lastKey = "";
+    document.getElementById("speed").addEventListener("click", function () {
+      var x = SPEEDS[(SPEEDS.indexOf(Sea.getSpeed()) + 1) % SPEEDS.length];
+      applySpeed(x);
+      try { localStorage.setItem("speed", String(x)); } catch (e) { /* private mode */ }
     });
+    document.getElementById("species-prev").addEventListener("click", function () { stepSpecies(-1); });
+    document.getElementById("species-next").addEventListener("click", function () { stepSpecies(1); });
+    document.getElementById("species-label").addEventListener("click", function () { stepSpecies(1); });
+    document.getElementById("about-prev").addEventListener("click", function () { var k = Sea.kinds(); renderAbout(k[(k.indexOf(aboutKind) - 1 + k.length) % k.length]); });
+    document.getElementById("about-next").addEventListener("click", function () { var k = Sea.kinds(); renderAbout(k[(k.indexOf(aboutKind) + 1) % k.length]); });
     document.getElementById("sound").addEventListener("click", function () {
       var on = Sound.toggle();
       document.getElementById("sound").textContent = t(on ? "sound_off" : "sound_on");

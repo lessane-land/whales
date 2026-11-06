@@ -11,7 +11,7 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="icon" href="icon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/site.css?v=32">
+<link rel="stylesheet" href="css/site.css?v=34">
 </head>
 <body>
 <canvas id="sea" aria-label="Mar"></canvas>
@@ -24,7 +24,7 @@
 <nav class="tools" aria-label="Opciones">
   <button class="pill" id="lang" type="button" aria-label="Language">EN</button>
   <button class="pill" id="sound" type="button" data-i18n="sound_on">Sonido</button>
-  <button class="pill" id="real" type="button" data-i18n="real_off">Tiempo real</button>
+  <button class="pill" id="speed" type="button" aria-label="Speed">90x</button>
   <button class="pill screen-btn" id="full" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span data-i18n="screen_on">Modo pantalla</span></button>
   <button class="pill" id="credits-open" type="button" data-i18n="credits">Créditos</button>
 </nav>
@@ -38,26 +38,35 @@
   <button class="pill about-open" id="about-open" type="button" data-i18n="about">Sobre la especie</button>
 </section>
 
-<nav class="species" id="species" aria-label="Especies"></nav>
+<nav class="scrub" id="species" aria-label="Especies">
+  <button class="scrub-btn" id="species-prev" type="button" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <button class="scrub-label" id="species-label" type="button"></button>
+  <button class="scrub-btn" id="species-next" type="button" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+</nav>
 
 <p class="hint" id="hint" hidden></p>
 
 <button class="pill screen-exit" id="screen-exit" type="button" data-i18n="screen_off" hidden>Salir del modo pantalla</button>
 
 <aside class="sheet" id="about" hidden>
-  <div class="sheet-body sheet-wide">
+  <div class="sheet-body sheet-wide about-body">
     <button class="pill sheet-close" id="about-close" type="button" data-i18n="close">Cerrar</button>
-    <nav class="about-kinds" id="about-kinds"></nav>
-    <canvas class="about-portrait" id="about-portrait" aria-hidden="true"></canvas>
     <header class="about-head">
-      <div>
+      <button class="scrub-btn" id="about-prev" type="button" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="about-title">
         <h2 id="about-name"></h2>
         <p class="latin" id="about-latin"></p>
       </div>
-      <p class="about-status" id="about-status"></p>
+      <button class="scrub-btn" id="about-next" type="button" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     </header>
-    <p class="about-here" id="about-here"></p>
-    <div class="about-grid" id="about-grid"></div>
+    <div class="about-cols">
+      <div class="about-left">
+        <canvas class="about-portrait" id="about-portrait" aria-hidden="true"></canvas>
+        <p class="about-status" id="about-status"></p>
+        <p class="about-here" id="about-here"></p>
+      </div>
+      <dl class="about-list" id="about-grid"></dl>
+    </div>
   </div>
 </aside>
 
@@ -89,10 +98,10 @@
   </div>
 </aside>
 
-<script src="js/i18n.js?v=32"></script>
-<script src="js/sound.js?v=32"></script>
-<script src="js/whales.js?v=32"></script>
-<script src="js/sea.js?v=32"></script>
-<script src="js/app.js?v=32"></script>
+<script src="js/i18n.js?v=34"></script>
+<script src="js/sound.js?v=34"></script>
+<script src="js/whales.js?v=34"></script>
+<script src="js/sea.js?v=34"></script>
+<script src="js/app.js?v=34"></script>
 </body>
 </html>
