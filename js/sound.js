@@ -115,7 +115,69 @@
   }
 
   // Blue and fin whales: a moan so low a speaker cannot play it, pitched up here.
-  var nextMoan = 0, nextWhistle = 0;
+  var nextMoan = 0, nextWhistle = 0, echo = null;
+
+  // An underwater echo for the singers: a short feedback delay through a low filter.
+  function echoBus() {
+    if (echo) return echo;
+    var inp = ac.createGain();
+    var d = ac.createDelay(1.0); d.delayTime.value = 0.32;
+    var fb = ac.createGain(); fb.gain.value = 0.38;
+    var lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1400;
+    var wet = ac.createGain(); wet.gain.value = 0.45;
+    inp.connect(master);
+    inp.connect(d); d.connect(lp); lp.connect(fb); fb.connect(d); lp.connect(wet); wet.connect(master);
+    echo = inp;
+    return echo;
+  }
+
+  // One unit of humpback song: a sweep with harmonics, vibrato and a slow swell.
+  function unit(t, f0, f1, dur, gain, pulse) {
+    var out = echoBus();
+    [1, 2, 3].forEach(function (h) {
+      var o = ac.createOscillator();
+      o.type = h === 1 ? "sine" : "triangle";
+      o.frequency.setValueAtTime(f0 * h, t);
+      o.frequency.exponentialRampToValueAtTime(f1 * h, t + dur);
+      var vib = ac.createOscillator(); vib.frequency.value = 5 + Math.random() * 2;
+      var vg = ac.createGain(); vg.gain.value = f0 * h * 0.012;
+      vib.connect(vg); vg.connect(o.frequency); vib.start(t); vib.stop(t + dur + 0.1);
+      var g = ac.createGain();
+      var peak = gain * 0.7 * (h === 1 ? 1 : h === 2 ? 0.22 : 0.08);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(peak, t + Math.min(0.25, dur * 0.3));
+      g.gain.setValueAtTime(peak, t + dur * 0.7);
+      g.gain.linearRampToValueAtTime(0.0001, t + dur);
+      if (pulse) {
+        var am = ac.createOscillator(); am.frequency.value = pulse;
+        var amg = ac.createGain(); amg.gain.value = peak * 0.5;
+        am.connect(amg); amg.connect(g.gain); am.start(t); am.stop(t + dur);
+      }
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.05);
+    });
+    return t + dur;
+  }
+
+  // A phrase: three to six units, repeated two or three times with small changes.
+  function song(t) {
+    var units = [], n = 3 + Math.floor(Math.random() * 4);
+    for (var i = 0; i < n; i++) {
+      var kind = Math.random();
+      if (kind < 0.35) units.push({ f0: 120 + Math.random() * 120, f1: 90 + Math.random() * 80, dur: 1.2 + Math.random() * 1.6, g: 0.3, pulse: 0 });            // moan
+      else if (kind < 0.6) units.push({ f0: 250 + Math.random() * 200, f1: 600 + Math.random() * 600, dur: 0.7 + Math.random() * 0.9, g: 0.22, pulse: 0 });   // rising cry
+      else if (kind < 0.8) units.push({ f0: 500 + Math.random() * 300, f1: 180 + Math.random() * 120, dur: 0.5 + Math.random() * 0.6, g: 0.24, pulse: 0 });   // whoop
+      else units.push({ f0: 90 + Math.random() * 60, f1: 110 + Math.random() * 60, dur: 1.0 + Math.random() * 1.2, g: 0.28, pulse: 14 + Math.random() * 12 }); // pulsed groan
+    }
+    var reps = 2 + Math.floor(Math.random() * 2);
+    for (var r = 0; r < reps; r++) {
+      units.forEach(function (u) {
+        var v = 1 + (Math.random() - 0.5) * 0.12;
+        t = unit(t, u.f0 * v, u.f1 * v, u.dur * (1 + (Math.random() - 0.5) * 0.2), u.g, u.pulse) + 0.15 + Math.random() * 0.35;
+      });
+      t += 0.8 + Math.random() * 0.8;
+    }
+    return t;
+  }
   // Whistles and chirps: belugas most of all, pilot whales too, narwhals now and then.
   function whistle(t, kind) {
     var o = ac.createOscillator();
@@ -167,7 +229,10 @@
     } else {
       nextBreath = 0;
       if (nextMoan === 0) nextMoan = t + 3;
-      if (t > nextMoan) { moan(t, kind); nextMoan = t + (kind === "blue" ? 14 : 9) + Math.random() * 12; }
+      if (t > nextMoan) {
+        if (kind === "humpback") { var end = song(t); nextMoan = end + 5 + Math.random() * 9; }
+        else { moan(t, kind); nextMoan = t + (kind === "blue" ? 14 : 9) + Math.random() * 12; }
+      }
     }
     nextClick = 0;
   }
