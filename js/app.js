@@ -27,6 +27,7 @@
     document.querySelectorAll("[data-i18n]").forEach(function (el) { el.textContent = t(el.dataset.i18n); });
     document.getElementById("lang").textContent = t("lang_switch");
     if (window.Sound) document.getElementById("sound").textContent = t(Sound.enabled() ? "sound_off" : "sound_on");
+    document.getElementById("full").textContent = t((document.fullscreenElement || document.webkitFullscreenElement) ? "full_off" : "full_on");
     lastKey = "";
   }
 
@@ -110,6 +111,32 @@
       applyStatic();
       document.getElementById("hint").textContent = t("hint");
     });
+    // Full screen: the page as a screen-saver. The pills fade after a while and come back on a touch.
+    var fullBtn = document.getElementById("full");
+    var fs = document.documentElement;
+    if (!(fs.requestFullscreen || fs.webkitRequestFullscreen)) fullBtn.hidden = true;
+    function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+    fullBtn.addEventListener("click", function () {
+      if (isFull()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
+      else { (fs.requestFullscreen || fs.webkitRequestFullscreen).call(fs); }
+    });
+    function onFullChange() {
+      var full = isFull();
+      fullBtn.textContent = t(full ? "full_off" : "full_on");
+      document.body.classList.toggle("full", full);
+      wake();
+    }
+    document.addEventListener("fullscreenchange", onFullChange);
+    document.addEventListener("webkitfullscreenchange", onFullChange);
+    var idleTimer = null;
+    function wake() {
+      document.body.classList.remove("idle");
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function () { document.body.classList.add("idle"); }, 6000);
+    }
+    ["pointermove", "pointerdown", "keydown", "touchstart"].forEach(function (ev) { document.addEventListener(ev, wake, { passive: true }); });
+    wake();
+
     document.getElementById("sound").addEventListener("click", function () {
       var on = Sound.toggle();
       document.getElementById("sound").textContent = t(on ? "sound_off" : "sound_on");
