@@ -114,6 +114,48 @@
     src.start(t, 0, 1.1);
   }
 
+  // Blue and fin whales: a moan so low a speaker cannot play it, pitched up here.
+  var nextMoan = 0;
+  function moan(t, kind) {
+    var o = ac.createOscillator();
+    o.type = "sine";
+    var f0 = kind === "blue" ? 62 : 84;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.linearRampToValueAtTime(f0 * 0.82, t + (kind === "blue" ? 4.5 : 1.2));
+    var g = ac.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.35, t + 0.6);
+    g.gain.linearRampToValueAtTime(0.0001, t + (kind === "blue" ? 5 : 1.4));
+    var o2 = ac.createOscillator();
+    o2.type = "triangle";
+    o2.frequency.setValueAtTime(f0 * 2, t);
+    o2.frequency.linearRampToValueAtTime(f0 * 1.64, t + 4.5);
+    var g2 = ac.createGain();
+    g2.gain.setValueAtTime(0, t);
+    g2.gain.linearRampToValueAtTime(0.08, t + 0.6);
+    g2.gain.linearRampToValueAtTime(0.0001, t + 5);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 5.2);
+    o2.connect(g2); g2.connect(master); o2.start(t); o2.stop(t + 5.2);
+  }
+
+  function baleen(t, depth, slope, surfaced, kind) {
+    var k = Math.min(1, depth / 400);
+    seaFilter.frequency.setTargetAtTime(180 - 90 * k, t, 0.5);
+    seaGain.gain.setTargetAtTime(0.3 + 0.25 * k, t, 0.5);
+    var up = depth < 30;
+    wavesGain.gain.setTargetAtTime(up ? 0.12 : 0, t, 0.8);
+    if (surfaced) { blow(t + 0.05); nextBreath = t + 7; }
+    if (up) {
+      if (nextBreath === 0) nextBreath = t + 2;
+      if (t > nextBreath) { blow(t); nextBreath = t + 6 + Math.random() * 5; }
+    } else {
+      nextBreath = 0;
+      if (nextMoan === 0) nextMoan = t + 3;
+      if (t > nextMoan) { moan(t, kind); nextMoan = t + (kind === "blue" ? 14 : 9) + Math.random() * 12; }
+    }
+    nextClick = 0;
+  }
+
   window.Sound = {
     enabled: function () { return on; },
     // Peak level of the last second, for checks. 0 when off.
@@ -129,9 +171,10 @@
       return on;
     },
     // Called every frame with the hero's state: depth, slope (m/s, down positive), surfaced (true on the frame she surfaces).
-    update: function (depth, slope, surfaced) {
+    update: function (depth, slope, surfaced, kind) {
       if (!on || !ac) return;
       var t = ac.currentTime;
+      if (kind && kind !== "sperm") { baleen(t, depth, slope, surfaced, kind); return; }
       // The sea deepens with depth: lower, heavier.
       var k = Math.min(1, depth / 1200);
       seaFilter.frequency.setTargetAtTime(180 - 110 * k, t, 0.5);

@@ -40,16 +40,38 @@
   function storyLine(hero, info) {
     var under = Math.round(Sea.underFor(hero) / 60);
     var d = hero.cur, slope = info.slope;   // metres per second, positive going down
+    var baleen = hero.kind !== "sperm";
     if (d < 25) {
       var up = Math.round(Sea.surfaceFor(hero) / 60);
       return up >= 1 ? t("phase_surface", { n: up }) : t("phase_surface_short");
     }
     if (slope > 0.25) {
       var rate = fmt(Math.round(slope * 60 / 5) * 5);
-      return d > 200 ? t("phase_descend_dark", { rate: rate }) : t("phase_descend", { rate: rate, n: under });
+      return d > 200 && !baleen ? t("phase_descend_dark", { rate: rate }) : t("phase_descend", { rate: rate, n: under });
     }
     if (slope < -0.25) return t("phase_ascend", { n: under });
+    if (baleen) {
+      var w = byId[hero.id], dive = w && w.dives.filter(function (dv) { return hero.sec >= dv.t && hero.sec <= dv.t + dv.dur; })[0];
+      return dive && dive.lunges ? t("phase_lunge", { d: fmt(Math.round(d / 10) * 10), n: under }) : t("phase_bottom_baleen", { d: fmt(Math.round(d / 10) * 10), n: under });
+    }
     return t("phase_bottom", { d: fmt(Math.round(d / 10) * 10), n: under });
+  }
+
+  function whoText(hero) {
+    var key = hero.kind === "blue" ? "whale_blue" : hero.kind === "fin" ? "whale_fin" : "whale";
+    return t(key, { id: hero.id });
+  }
+
+  function bioText(w) {
+    if (!w) return "";
+    if (w.kind === "blue" || w.kind === "fin") {
+      var parts = [t("bio_baleen", { sex: w.sex === "m" ? t("sex_m") : w.sex === "f" ? t("sex_f") : t("whale_" + w.kind, { id: "" }).trim(),
+        date: dateText(w.tagged), days: fmt(w.record_days), dives: fmt(w.record_dives), lunges: fmt(w.record_lunges), max: fmt(w.record_max), min: fmt(w.record_longest_min) })];
+      if (w.also_tagged) parts.push(t("bio_also", { date: dateText(w.also_tagged) }));
+      parts.push(t("bio_drawn"));
+      return parts.join(" ");
+    }
+    return t("bio", { date: dateText(w.tagged), days: fmt(w.record_days), dives: fmt(w.record_dives), max: fmt(w.record_max), min: fmt(w.record_longest_min) });
   }
 
   var lastKey = "", wasBelow = null, lastHero = null, hintUntil = 0, wasUnder = false, underHero = null;
@@ -59,7 +81,7 @@
       var surfaced = false;
       if (hero.cur > 50) wasUnder = true;
       else if (wasUnder && hero.cur < 6) { wasUnder = false; surfaced = true; }
-      Sound.update(hero.cur, info ? info.slope : 0, surfaced);
+      Sound.update(hero.cur, info ? info.slope : 0, surfaced, hero.kind);
     }
     var below = surfaceY < 70 || (info && info.night > 0.5);
     if (below !== wasBelow) { wasBelow = below; document.body.classList.toggle("below", below); }
@@ -67,9 +89,7 @@
     var w = byId[hero.id];
     if (hero !== lastHero) {
       lastHero = hero;
-      document.getElementById("deep-bio").textContent = w ? t("bio", {
-        date: dateText(w.tagged), days: fmt(w.record_days), dives: fmt(w.record_dives), max: fmt(w.record_max), min: fmt(w.record_longest_min)
-      }) : "";
+      document.getElementById("deep-bio").textContent = bioText(w);
     }
     var d = Math.round(hero.cur / 5) * 5;
     var lt = Sea.localTime(hero);
@@ -77,7 +97,7 @@
     if (key === lastKey) return;
     lastKey = key;
     document.getElementById("deep-depth").textContent = t("depth_m", { n: fmt(d) });
-    document.getElementById("deep-who").textContent = t("whale", { id: hero.id });
+    document.getElementById("deep-who").textContent = whoText(hero);
     document.getElementById("deep-story").textContent = storyLine(hero, info);
     if (lt) {
       var ds = new Intl.DateTimeFormat(locale(), { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(lt);

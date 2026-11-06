@@ -138,13 +138,15 @@
     // Stay with her through her breathing at the surface (about seven minutes of
     // her time), then hand over to whoever is heading down.
     if (hero && !force && !(hero.cur < 40 && surfaceFor(hero) > 420)) return;
-    var best = null;
+    var best = null, bestOther = null, lastKind = hero ? hero.kind : null;
     whales.forEach(function (w) {
       var ahead = depthAt(w, w.sec + 900) - w.cur;
-      var score = w.cur + ahead * 1.5;
+      var score = (w.cur + ahead * 1.5) / (w.kind === "sperm" ? 1 : 0.35);   // fair to the shallower divers
       if (!best || score > best.score) best = { w: w, score: score };
+      if (w.kind !== lastKind && ahead > 40 && (!bestOther || score > bestOther.score)) bestOther = { w: w, score: score };
     });
-    if (best && best.w !== hero) { hero = best.w; layoutWhales(); }
+    var pick = bestOther || best;
+    if (pick && pick.w !== hero) { hero = pick.w; layoutWhales(); }
   }
 
   function drawSky(sy) {
@@ -346,7 +348,64 @@
     });
   }
 
-  function drawWhale(x, y, pitch, scale, shade, alpha) {
+  // A blue whale: long, slim, flat head, tiny dorsal fin far back. 100 x 30 box, facing left.
+  function drawBlue(shade) {
+    ctx.fillStyle = shade[0];
+    ctx.beginPath();
+    ctx.moveTo(-52, 0); ctx.lineTo(-44, -7); ctx.lineTo(-20, -10); ctx.lineTo(8, -9); ctx.lineTo(28, -6);
+    ctx.lineTo(30, -11); ctx.lineTo(34, -6); ctx.lineTo(44, -3); ctx.lineTo(52, -12); ctx.lineTo(47, 0); ctx.lineTo(52, 12);
+    ctx.lineTo(44, 3); ctx.lineTo(30, 6); ctx.lineTo(6, 9); ctx.lineTo(-22, 9); ctx.lineTo(-44, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = shade[1];
+    ctx.beginPath(); ctx.moveTo(-44, -7); ctx.lineTo(-20, -10); ctx.lineTo(-24, 0); ctx.lineTo(-52, 0); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-20, -10); ctx.lineTo(8, -9); ctx.lineTo(4, 0); ctx.lineTo(-24, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade[2];
+    ctx.beginPath(); ctx.moveTo(8, -9); ctx.lineTo(28, -6); ctx.lineTo(30, 6); ctx.lineTo(4, 0); ctx.closePath(); ctx.fill();
+    // Throat grooves, the baleen whale's pleats.
+    ctx.strokeStyle = shade[2];
+    ctx.lineWidth = 0.8;
+    for (var i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(-46 + i * 2, 1 + i * 1.6); ctx.lineTo(-14 + i * 4, 3 + i * 1.5); ctx.stroke(); }
+    ctx.fillStyle = shade[1];
+    ctx.beginPath(); ctx.moveTo(-30, 8); ctx.lineTo(-22, 16); ctx.lineTo(-12, 9); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(200, 230, 240, 0.85)";
+    ctx.beginPath(); ctx.arc(-40, -2, 1.2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // A fin whale: like the blue but sharper, with a taller hooked dorsal fin.
+  function drawFin(shade) {
+    ctx.fillStyle = shade[0];
+    ctx.beginPath();
+    ctx.moveTo(-52, 1); ctx.lineTo(-42, -7); ctx.lineTo(-18, -10); ctx.lineTo(10, -9); ctx.lineTo(26, -6);
+    ctx.lineTo(27, -15); ctx.lineTo(33, -6); ctx.lineTo(44, -3); ctx.lineTo(52, -11); ctx.lineTo(47, 0); ctx.lineTo(52, 11);
+    ctx.lineTo(44, 3); ctx.lineTo(30, 6); ctx.lineTo(6, 8); ctx.lineTo(-22, 8); ctx.lineTo(-44, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = shade[1];
+    ctx.beginPath(); ctx.moveTo(-42, -7); ctx.lineTo(-18, -10); ctx.lineTo(-22, 0); ctx.lineTo(-52, 1); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-18, -10); ctx.lineTo(10, -9); ctx.lineTo(6, 0); ctx.lineTo(-22, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade[2];
+    ctx.beginPath(); ctx.moveTo(10, -9); ctx.lineTo(26, -6); ctx.lineTo(30, 6); ctx.lineTo(6, 0); ctx.closePath(); ctx.fill();
+    // The fin whale's pale right jaw.
+    ctx.fillStyle = "rgba(220, 230, 235, 0.35)";
+    ctx.beginPath(); ctx.moveTo(-52, 1); ctx.lineTo(-30, 2); ctx.lineTo(-30, 7); ctx.lineTo(-44, 6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade[1];
+    ctx.beginPath(); ctx.moveTo(-28, 8); ctx.lineTo(-21, 15); ctx.lineTo(-12, 8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(200, 230, 240, 0.85)";
+    ctx.beginPath(); ctx.arc(-40, -2, 1.2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawWhale(x, y, pitch, scale, shade, alpha, kind) {
+    if (kind === "blue" || kind === "fin") {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(x, y);
+      ctx.rotate(pitch);
+      ctx.scale(scale * 1.25, scale * 1.25);
+      if (kind === "blue") drawBlue(shade); else drawFin(shade);
+      ctx.restore();
+      return;
+    }
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
@@ -372,8 +431,12 @@
     ctx.restore();
   }
 
-  var NEAR = ["#071428", "#0d2140", "#153358"];
-  var FAR = ["#0f2d4e", "#15395f", "#1c4670"];
+  var SHADES = {
+    sperm: { near: ["#071428", "#0d2140", "#153358"], far: ["#0f2d4e", "#15395f", "#1c4670"] },
+    blue:  { near: ["#2a4a6a", "#36597c", "#476b8e"], far: ["#3a5f82", "#466d90", "#557c9e"] },
+    fin:   { near: ["#1c2e42", "#273d55", "#334d68"], far: ["#2b4560", "#365472", "#426283"] }
+  };
+  function shadeOf(w, near) { return (SHADES[w.kind] || SHADES.sperm)[near ? "near" : "far"]; }
 
   function drawTrail(w, x) {
     var pxPerSec = (W < 720 ? 3.2 : 5.5) / 60;
@@ -457,7 +520,7 @@
 
     var hx = hero ? hero.x0 + Math.sin(now / 15000) * hero.drift : W / 2;
     var hy = hero ? depthToY(hero.cur) : H;
-    var hs = HERO_W / 100 * (W < 720 ? 0.62 : 1) * (1 + 0.3 * Math.min(1, (hero ? hero.cur : 0) / 1000));
+    var hs = HERO_W / 100 * (W < 720 ? 0.62 : 1) * (1 + 0.3 * Math.min(1, (hero ? hero.cur : 0) / 1000)) * (hero && hero.kind === "blue" ? 1.2 : 1);
     if (hero && hero.cur < 5) hy = sy + 9 * hs;
 
     whales.forEach(function (w) {
@@ -469,8 +532,8 @@
       var ahead = depthAt(w, w.sec + 30) - w.cur;
       var pitch = Math.max(-0.6, Math.min(0.6, ahead / 30 * 0.9));
       w.pitch += (pitch - w.pitch) * 0.04;
-      var scale = FAR_W / 100 * w.far * (W < 720 ? 0.8 : 1);
-      drawWhale(x, Math.max(sy + 8 * scale, y), w.pitch, scale, FAR, 0.5 + 0.35 * w.far);
+      var scale = FAR_W / 100 * w.far * (W < 720 ? 0.8 : 1) * (w.kind === "blue" ? 1.35 : w.kind === "fin" ? 1.15 : 1);
+      drawWhale(x, Math.max(sy + 8 * scale, y), w.pitch, scale, shadeOf(w, false), 0.5 + 0.35 * w.far, w.kind);
     });
 
     drawSquid(now);
@@ -483,7 +546,7 @@
       var pitch2 = Math.max(-0.5, Math.min(0.5, ahead2 / 30 * 0.8));
       hero.pitch += (pitch2 - hero.pitch) * 0.03;
       drawTrail(hero, hx);
-      drawWhale(hx, hy, hero.pitch, hs, NEAR, 1);
+      drawWhale(hx, hy, hero.pitch, hs, shadeOf(hero, true), 1, hero.kind);
       drawBlow(now, hx, sy, hs / (HERO_W / 100));
     }
 
@@ -524,7 +587,7 @@
       if (opts && opts.tick) tickText = opts.tick;
       onTick = opts && opts.onTick;
       whales = data.whales.map(function (w, i) {
-        return { id: w.id, depth: w.depth, step: w.step, dives: w.dives, max: w.max,
+        return { id: w.id, kind: w.kind || "sperm", depth: w.depth, step: w.step, dives: w.dives, max: w.max,
                  start: w.window_start ? new Date(w.window_start + "Z") : null, utc: w.utc_offset || 0,
                  sec: (i * 9973) % (w.depth.length * w.step), pitch: 0, cur: 0, prev: 0, x0: 0, drift: 0, far: 1 };
       });
