@@ -127,9 +127,40 @@
     }
   }
 
-  var aboutKind = null;
+  var aboutKind = null, portraitRaf = 0;
+  var ABOUT_PALETTE = { sperm: ["#2f5276", "#223f5e", "#182f49", "#102238", "#0a1729", "#0a1729"], blue: ["#8fb5cc", "#6c95b2", "#527a98", "#3d607c", "#2a475f", "#2a475f"], fin: ["#6f8ea6", "#56758d", "#415c74", "#2f465b", "#223445", "#c9d6dd"], cuvier: ["#8f8a7a", "#716c5e", "#5a5648", "#454236", "#302e26", "#302e26"], blainville: ["#6f7d86", "#56646e", "#424f58", "#323d45", "#242c33", "#d8dde0"], pilot: ["#2b3340", "#1f2630", "#161c24", "#0f131a", "#0a0d12", "#0a0d12"], beluga: ["#f4f7f8", "#dfe7eb", "#c3d1d8", "#a7b9c3", "#8ea3ae", "#8ea3ae"], narwhal: ["#b9c2c6", "#949fa5", "#717c83", "#545d64", "#3b4349", "#e8ece9"], humpback: ["#4a5a66", "#38474f", "#2b373f", "#1f2930", "#151c22", "#dfe6ea"] };
+
+  function drawPortrait(kind) {
+    var c = document.getElementById("about-portrait");
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), w = c.clientWidth, h = c.clientHeight;
+    c.width = w * dpr; c.height = h * dpr;
+    var ctx = c.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    // A little water behind her.
+    var g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "rgba(66, 174, 203, 0.35)"); g.addColorStop(1, "rgba(16, 60, 96, 0.35)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(0, 0, w, h, 12); ctx.fill();
+    var scale = Math.min(w / 100 * 0.7, h / 44 * 0.9) * (kind === "narwhal" ? 0.75 : 1);
+    ctx.save();
+    ctx.translate(w / 2 + (kind === "narwhal" ? w * 0.08 : 0), h / 2 + 4);
+    ctx.scale(scale, scale);
+    Whales.draw(ctx, kind, { shade: ABOUT_PALETTE[kind] || ABOUT_PALETTE.sperm, t: performance.now(), speed: 0.15, seam: 0.3 });
+    ctx.restore();
+    if (!document.getElementById("about").hidden) portraitRaf = requestAnimationFrame(function () { drawPortrait(kind); });
+  }
+
+  function hereText(kind) {
+    var ws = data.whales.filter(function (w) { return (w.kind || "sperm") === kind; });
+    if (!ws.length) return "";
+    var max = Math.max.apply(null, ws.map(function (w) { return w.record_max || 0; }));
+    var min = Math.max.apply(null, ws.map(function (w) { return w.record_longest_min || 0; }));
+    return t(ws.length === 1 ? "here_one" : "here_many", { n: fmt(ws.length), max: fmt(max), min: fmt(min) });
+  }
+
   function renderAbout(kind) {
     aboutKind = kind;
+    cancelAnimationFrame(portraitRaf);
     var nav = document.getElementById("about-kinds");
     nav.innerHTML = "";
     Sea.kinds().forEach(function (k) {
@@ -142,14 +173,19 @@
     });
     document.getElementById("about-name").textContent = t("sp_" + kind + "_name");
     document.getElementById("about-latin").textContent = t("sp_" + kind + "_latin");
-    var dl = document.getElementById("about-list");
-    dl.innerHTML = "";
-    ["size", "weight", "lives", "dives", "eats", "sounds", "status"].forEach(function (f) {
-      var dt = document.createElement("dt"), dd = document.createElement("dd");
-      dt.textContent = t("sp_" + f);
-      dd.textContent = t("sp_" + kind + "_" + f);
-      dl.appendChild(dt); dl.appendChild(dd);
+    document.getElementById("about-status").textContent = t("sp_" + kind + "_status").replace(/\.$/, "");
+    document.getElementById("about-here").textContent = hereText(kind);
+    var grid = document.getElementById("about-grid");
+    grid.innerHTML = "";
+    [["size", false], ["weight", false], ["lives", true], ["dives", true], ["eats", false], ["sounds", false]].forEach(function (f) {
+      var card = document.createElement("article");
+      card.className = "about-card" + (f[1] ? " wide" : "");
+      card.innerHTML = '<svg><use href="#i-' + f[0] + '"/></svg><div><h3></h3><p></p></div>';
+      card.querySelector("h3").textContent = t("sp_" + f[0]);
+      card.querySelector("p").textContent = t("sp_" + kind + "_" + f[0]);
+      grid.appendChild(card);
     });
+    drawPortrait(kind);
   }
 
   var chosenKind = null;
@@ -236,11 +272,11 @@
       document.getElementById("sound").classList.toggle("active", on);
     });
     document.getElementById("about-open").addEventListener("click", function () {
-      renderAbout(lastHero ? lastHero.kind : "sperm");
       document.getElementById("about").hidden = false;
+      renderAbout(lastHero ? lastHero.kind : "sperm");
     });
-    document.getElementById("about-close").addEventListener("click", function () { document.getElementById("about").hidden = true; });
-    document.getElementById("about").addEventListener("click", function (e) { if (e.target === e.currentTarget) e.currentTarget.hidden = true; });
+    document.getElementById("about-close").addEventListener("click", function () { document.getElementById("about").hidden = true; cancelAnimationFrame(portraitRaf); });
+    document.getElementById("about").addEventListener("click", function (e) { if (e.target === e.currentTarget) { e.currentTarget.hidden = true; cancelAnimationFrame(portraitRaf); } });
     document.getElementById("credits-open").addEventListener("click", function () {
       document.getElementById("credits").hidden = false;
     });
