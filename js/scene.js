@@ -290,4 +290,4 @@ window.Scene = {
   }
 };
 
-Scene.init(document.getElementById("gl"), "models/manifest.json?v=42");
+Scene.init(document.getElementById("gl"), "models/manifest.json?v=43");

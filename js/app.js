@@ -174,7 +174,8 @@
     if (!ws.length) return "";
     var max = Math.max.apply(null, ws.map(function (w) { return w.record_max || 0; }));
     var min = Math.max.apply(null, ws.map(function (w) { return w.record_longest_min || 0; }));
-    return t(ws.length === 1 ? "here_one" : "here_many", { n: fmt(ws.length), max: fmt(max), min: fmt(min) });
+    var key = (ws.length === 1 ? "here_one" : "here_many") + (min >= 1 ? "" : "_nomin");   // a tag that read every 75 s has no dive lengths worth a number
+    return t(key, { n: fmt(ws.length), max: fmt(max), min: fmt(min) });
   }
 
   function renderAbout(kind) {
@@ -258,7 +259,7 @@
       data = d;
       d.whales.forEach(function (w) { byId[w.id] = w; });
       var q = new URLSearchParams(location.search);
-      if (window.Globe) Globe.init(document.getElementById("globe"), "data/land.json?v=42");
+      if (window.Globe) Globe.init(document.getElementById("globe"), "data/land.json?v=43");
       Sea.init(document.getElementById("sea"), d, {
         whale: q.get("whale"), at: q.has("at") ? parseFloat(q.get("at")) : undefined, gallery: q.has("gallery"),
         onTick: onTick,
@@ -390,7 +391,7 @@
 
   start();
   // The 3D models, credited by title, author and licence.
-  fetch("models/manifest.json?v=42").then(function (r) { return r.json(); }).then(function (man) {
+  fetch("models/manifest.json?v=43").then(function (r) { return r.json(); }).then(function (man) {
     var ul = document.getElementById("credits-models"), seen = {};
     if (!ul) return;
     Object.keys(man).forEach(function (k) {
