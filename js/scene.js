@@ -36,18 +36,19 @@ const rays = new THREE.Group();
 
 function bendShader(sh) {
   sh.uniforms.uTime = { value: 0 }; sh.uniforms.uBeat = { value: 1 };
-  sh.uniforms.uPhase = { value: 0 };
-  sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uBeat; uniform float uPhase;")
+  sh.uniforms.uPhase = { value: 0 }; sh.uniforms.uEnv = { value: 1 };
+  sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uBeat; uniform float uPhase; uniform float uEnv;")
     .replace("#include <begin_vertex>", `#include <begin_vertex>
-      // A wave travels down the body: almost nothing at the head, growing past the dorsal, full at the fluke.
+      // A slow wave travels down the body: nothing at the head, a little past the dorsal, most at the fluke.
+      // uEnv is the stroke envelope: whales stroke a few times, then glide.
       float along = clamp((transformed.x + 0.5), 0.0, 1.0);
-      float amp = 0.004 + 0.06 * pow(max(0.0, along - 0.45) / 0.55, 2.2);
-      float ph = uTime * 1.7 * uBeat - transformed.x * 7.0 + uPhase;
-      transformed.z += sin(ph) * amp * uBeat;
-      transformed.y += sin(ph + 1.3) * amp * 0.55 * uBeat;
-      // The fluke twists a little against the stroke, as a real one does.
-      float fl = max(0.0, (transformed.x - 0.36) / 0.14);
-      transformed.y += cos(ph) * transformed.z * 0.35 * fl * uBeat;`);
+      float amp = (0.0015 + 0.03 * pow(max(0.0, along - 0.5) / 0.5, 2.6)) * uEnv;
+      float ph = uTime * 1.15 * uBeat - transformed.x * 5.5 + uPhase;
+      transformed.z += sin(ph) * amp;
+      transformed.y += sin(ph + 1.3) * amp * 0.4;
+      // The fluke feathers a touch against the stroke.
+      float fl = max(0.0, (transformed.x - 0.38) / 0.12);
+      transformed.y += cos(ph) * transformed.z * 0.18 * fl * uEnv;`);
   shaders.push(sh);
 }
 
@@ -221,10 +222,10 @@ window.Scene = {
       if (u.px === undefined) { u.px = r.x; u.py = r.y; u.pitch = r.pitch; u.bank = 0; u.yaw = r.flat ? 0.1 : 0.36; u.phase = (r.id.length * 1.7) % 6.28; }
       const dx = r.x - u.px, dy = r.y - u.py; u.px = r.x; u.py = r.y;
       u.pitch += (r.pitch - u.pitch) * 0.12;
-      const bankTarget = Math.max(-0.35, Math.min(0.35, dx * 0.08)) + (r.flat ? 0 : Math.sin(t * 0.23 + u.phase) * 0.05);
-      u.bank += (bankTarget - u.bank) * 0.04;
-      const yawTarget = r.flat ? 0.1 : 0.36 + Math.sin(t * 0.11 + u.phase) * 0.1 + Math.max(-0.25, Math.min(0.25, -dx * 0.03));
-      u.yaw += (yawTarget - u.yaw) * 0.03;
+      const bankTarget = Math.max(-0.22, Math.min(0.22, dx * 0.05)) + (r.flat ? 0 : Math.sin(t * 0.17 + u.phase) * 0.03);
+      u.bank += (bankTarget - u.bank) * 0.025;
+      const yawTarget = r.flat ? 0.1 : 0.36 + Math.sin(t * 0.07 + u.phase) * 0.06 + Math.max(-0.15, Math.min(0.15, -dx * 0.02));
+      u.yaw += (yawTarget - u.yaw) * 0.02;
       g.position.set(r.x, -r.y, r.flat ? -20 : 0);
       g.scale.setScalar(len);
       g.rotation.set(u.bank, u.yaw, -u.pitch);
@@ -238,7 +239,11 @@ window.Scene = {
         pupil.position.y = look; iris.position.y = look * 0.7;
       }
       g.visible = true; seen[r.id + (r.flat ? ":flat" : "")] = 1;
-      const beat = 0.45 + (r.speed || 0) * 1.1; (u.shaders || []).forEach(sh => { sh.uniforms.uBeat.value = beat; sh.uniforms.uPhase.value = u.phase; });
+      // Stroke, then glide: the envelope rises for a few beats and settles; a resting whale barely moves.
+      const sp = r.speed || 0, beat = 0.6 + sp * 0.7;
+      const cyc = Math.sin(t * 0.3 + u.phase * 0.7), env = (0.25 + 0.75 * Math.max(0, Math.min(1, cyc * 2 + 0.5))) * (0.35 + 0.65 * Math.min(1, sp * 3));
+      u.env = u.env === undefined ? env : u.env + (env - u.env) * 0.03;
+      (u.shaders || []).forEach(sh => { sh.uniforms.uBeat.value = beat; sh.uniforms.uPhase.value = u.phase; sh.uniforms.uEnv.value = u.env; });
     });
     Object.keys(pool).forEach(k => { if (!seen[k]) pool[k].visible = false; });
     shaders.forEach(sh => { sh.uniforms.uTime.value = t; });
@@ -252,4 +257,4 @@ window.Scene = {
   }
 };
 
-Scene.init(document.getElementById("gl"), "models/manifest.json?v=39");
+Scene.init(document.getElementById("gl"), "models/manifest.json?v=40");

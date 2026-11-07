@@ -373,7 +373,7 @@
 
   start();
   // The 3D models, credited by title, author and licence.
-  fetch("models/manifest.json?v=39").then(function (r) { return r.json(); }).then(function (man) {
+  fetch("models/manifest.json?v=40").then(function (r) { return r.json(); }).then(function (man) {
     var ul = document.getElementById("credits-models"), seen = {};
     if (!ul) return;
     Object.keys(man).forEach(function (k) {
