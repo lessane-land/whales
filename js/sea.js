@@ -22,6 +22,7 @@
   var mono = "monospace", sans = "sans-serif";
   var tickText = function (d) { return d + " m"; };
   var night = 0;               // 0 day, 1 night, from the hero's real clock
+  var S3 = null;               // the anime layer (js/scene.js), once its models are in
 
   var STOPS = [
     [0, [66, 174, 203]],
@@ -267,7 +268,7 @@
     // Bands: each a vertical strip of its tone, strong near the surface and
     // sinking into the gradient by 900 m. Light tones fade sooner.
     var fadeY = depthToY(700), lightFadeY = depthToY(520);
-    stripes.forEach(function (st) {
+    if (!S3) stripes.forEach(function (st) {
       var sway = Math.sin(now / 13000 + st.phase) * 3;
       var c = mix(TONES[st.tone], [4, 10, 22], night * 0.6);
       var top = st.tone <= 1 ? 0.22 : 0.1, far = st.tone <= 1 ? lightFadeY : fadeY;
@@ -555,8 +556,9 @@
     }
   }
 
-  function drawWhale(x, y, pitch, scale, shade, alpha, kind, flat, speed, phase) {
+  function drawWhale(x, y, pitch, scale, shade, alpha, kind, flat, speed, phase, id) {
     var m = MESH[kind] || MESH.sperm;
+    if (S3 && id) { S3.whale(id, { x: x, y: y, pitch: pitch, scale: scale * m.box, alpha: alpha, kind: kind, flat: !!flat, speed: speed || 0, color: flat ? flat[0] : null }); return; }
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
@@ -657,6 +659,8 @@
     want = Math.max(VIEW_M * 0.26, Math.min(MAX_DEPTH - VIEW_M * 0.3, want));
     camDepth += (want - camDepth) * Math.min(1, dt * 1.2);
     var sy = surfaceY();
+    S3 = window.Scene && window.Scene.ready ? window.Scene : null;
+    if (S3) S3.begin({ W: W, H: H, dpr: dpr, sy: sy, now: now });
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
@@ -673,7 +677,7 @@
     if (hero) {
       if (up) {
         // Breathing: her back and blowhole ride above the line, with a slow bob.
-        hy = sy + 7 * hs * hb + Math.sin(now / 1700) * 2.5;
+        hy = sy + (S3 ? 13 : 7) * hs * hb + Math.sin(now / 1700) * 2.5;   // the 3D body is centred, so it sits deeper to show only her back
         if (now > nextBreath) { blowUntil = now + 2000; nextBreath = now + Math.max(2600, (9000 + Math.random() * 5000) / Math.sqrt(SPEED)) + Math.random() * 1200; }
         wasUp = true;
       } else {
@@ -702,7 +706,7 @@
       var scale = FAR_W / 100 * w.far * (W < 720 ? 0.8 : 1) * (w.kind === "blue" ? 1.35 : w.kind === "fin" ? 1.15 : 1);
       var sil = mix([10, 24, 44], [40, 90, 120], 1 - w.far);
       var flat = [rgb(sil), rgb(sil), rgb(sil), rgb(sil), rgb(sil), rgb(mix(sil, [200, 215, 225], 0.5))];
-      drawWhale(x, Math.max(sy + 8 * scale, y), w.pitch, scale, flat, 0.55 + 0.3 * w.far, w.kind, true, w.speed, w.x0);
+      drawWhale(x, Math.max(sy + 8 * scale, y), w.pitch, scale, flat, 0.55 + 0.3 * w.far, w.kind, true, w.speed, w.x0, w.id);
     });
 
     drawSquid(now);
@@ -729,13 +733,13 @@
         var headX = hx - 46 * hs * hb, headY = sy + 44 * hs * hb;
         var cx2 = headX + Math.cos(-arc) * 46 * hs * hb, cy2 = headY + Math.sin(-arc) * 46 * hs * hb;
         hero.pitch = -arc;
-        drawWhale(cx2, cy2, -arc, hs, shadeOf(hero, true), 1, hero.kind, false, hero.speed, 0);
+        drawWhale(cx2, cy2, -arc, hs, shadeOf(hero, true), 1, hero.kind, false, hero.speed, 0, hero.id);
         // Water running off the flukes.
         ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
         ctx.lineWidth = 1.2;
         for (var d2 = 0; d2 < 5; d2++) { var tx = cx2 + Math.cos(-arc) * 48 * hs * hb + (d2 - 2) * 6, ty = cy2 + Math.sin(-arc) * 48 * hs * hb; if (ty < sy) { ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx, Math.min(sy, ty + 10 + d2 * 5)); ctx.stroke(); } }
       } else {
-        drawWhale(hx, hy, hero.pitch, hs, shadeOf(hero, true), 1, hero.kind, false, hero.speed, 0);
+        drawWhale(hx, hy, hero.pitch, hs, shadeOf(hero, true), 1, hero.kind, false, hero.speed, 0, hero.id);
       }
       if (up) {
         // Foam around her where she breaks the surface.
@@ -758,12 +762,13 @@
       ctx.fillStyle = "rgba(2, 6, 14, " + veil.toFixed(3) + ")";
       ctx.fillRect(0, Math.max(0, sy), W, H);
       // Her eye keeps a spark.
-      if (hero && hy > 0 && hy < H) {
+      if (!S3 && hero && hy > 0 && hy < H) {
         ctx.fillStyle = "rgba(220, 240, 250, " + (0.8 * veil).toFixed(2) + ")";
         ctx.beginPath(); ctx.arc(hx - 40 * hs, hy + 2 * hs, 1.6 * hs, 0, 6.28); ctx.fill();
       }
     }
 
+    if (S3) S3.end(veil, night);
     if (onTick) onTick(hero, whales, sy, { night: night, hour: hero ? localHour(hero) : 12, slope: hero ? (depthAt(hero, hero.sec + 60) - hero.cur) / 60 : 0 });
     requestAnimationFrame(draw);
   }

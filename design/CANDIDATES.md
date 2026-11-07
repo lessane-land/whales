@@ -24,3 +24,10 @@ CC BY asks for the author's name, the model title, a link to the model and the l
 - `design/models.html?m=<uid>.glb`: candidate viewer.
 - `design/world.html`: Allie2k's whale with a real light engine, fog and soft rays. Vane: "a 90s teacher video".
 - `design/poster.html`: no light engine, every triangle one flat colour in four steps, the whale simplified to about 1500 facets. Moods: `?dive`, `?night`, `?deep`, `?bold`, or `#night-dive`. Hosted copy for Vane at https://claude.ai/artifact/3bhExVtEZKQeSk3x8teiio (the model as JSON glTF because the host cannot serve .glb).
+
+## Shipped
+
+The anime look went live: `js/scene.js` draws every whale as a cel shaded, ink outlined model over the 2D sea,
+driven by `js/sea.js` (which keeps the data, the dives, the camera and the behaviour). Models in `models/`, baked
+with `tools/bake/` (`bake.html` plus a Playwright driver). The drawn 2D whales (`js/whales.js`) remain the fallback
+when WebGL or the models are not available.

@@ -134,6 +134,9 @@
   function drawPortrait(kind) {
     var c = document.getElementById("about-portrait");
     var dpr = Math.min(window.devicePixelRatio || 1, 2), w = c.clientWidth, h = c.clientHeight;
+    // The cel whale when the 3D layer is in; the canvas then belongs to WebGL and keeps a styled background.
+    if (window.Scene && window.Scene.ready) { c.classList.add("gl"); if (window.Scene.portrait(c, kind)) return; }
+    if (c.classList.contains("gl")) return;   // the canvas belongs to WebGL once it has drawn there
     c.width = w * dpr; c.height = h * dpr;
     var ctx = c.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -355,4 +358,18 @@
   }
 
   start();
+  // The 3D models, credited by title, author and licence.
+  fetch("models/manifest.json?v=38").then(function (r) { return r.json(); }).then(function (man) {
+    var ul = document.getElementById("credits-models"), seen = {};
+    if (!ul) return;
+    Object.keys(man).forEach(function (k) {
+      var m = man[k]; if (seen[m.url]) return; seen[m.url] = 1;
+      var li = document.createElement("li");
+      var a = document.createElement("a"); a.href = m.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = m.title;
+      var b = document.createElement("a"); b.href = m.author_url; b.target = "_blank"; b.rel = "noopener"; b.textContent = m.author;
+      var c = document.createElement("a"); c.href = m.license_url; c.target = "_blank"; c.rel = "noopener"; c.textContent = m.license;
+      li.appendChild(a); li.appendChild(document.createTextNode(", ")); li.appendChild(b); li.appendChild(document.createTextNode(", ")); li.appendChild(c);
+      ul.appendChild(li);
+    });
+  }).catch(function () {});
 })();

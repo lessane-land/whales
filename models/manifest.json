@@ -1,0 +1,85 @@
+{
+ "humpback": {
+  "file": "humpback.glb",
+  "title": "Game-ready Humpback Whale",
+  "author": "Allie2k",
+  "author_url": "https://sketchfab.com/Allie2k",
+  "license": "CC Attribution",
+  "license_url": "http://creativecommons.org/licenses/by/4.0/",
+  "url": "https://sketchfab.com/3d-models/game-ready-humpback-whale-da07e3ff73914ff28d2b8cf9da794036"
+ },
+ "sperm": {
+  "file": "sperm.glb",
+  "title": "Sperm whale",
+  "author": "CARI'MAM",
+  "author_url": "https://sketchfab.com/CARIMAM",
+  "license": "CC Attribution-NonCommercial-ShareAlike",
+  "license_url": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+  "url": "https://sketchfab.com/3d-models/sperm-whale-9d62dd998b154c3d9043711866186b7a"
+ },
+ "blue": {
+  "file": "blue.glb",
+  "title": "Blue Whale",
+  "author": "Erik",
+  "author_url": "https://sketchfab.com/murreburr",
+  "license": "CC Attribution",
+  "license_url": "http://creativecommons.org/licenses/by/4.0/",
+  "url": "https://sketchfab.com/3d-models/blue-whale-fdadc3db04914dc78a4df880667ab658"
+ },
+ "fin": {
+  "file": "fin.glb",
+  "title": "Fin Whale",
+  "author": "Johann Woelper",
+  "author_url": "https://sketchfab.com/woelper",
+  "license": "CC Attribution-NonCommercial",
+  "license_url": "http://creativecommons.org/licenses/by-nc/4.0/",
+  "url": "https://sketchfab.com/3d-models/fin-whale-fb69578cfaaf45969f3118de4103d03b"
+ },
+ "cuvier": {
+  "file": "cuvier.glb",
+  "title": "Cuvier's Beaked Whale",
+  "author": "allthingsaurus",
+  "author_url": "https://sketchfab.com/allthingsaurus",
+  "license": "CC Attribution",
+  "license_url": "http://creativecommons.org/licenses/by/4.0/",
+  "url": "https://sketchfab.com/3d-models/cuviers-beaked-whale-a463879e47d24df795ebaecb460c28a2"
+ },
+ "blainville": {
+  "file": "cuvier.glb",
+  "title": "Cuvier's Beaked Whale",
+  "author": "allthingsaurus",
+  "author_url": "https://sketchfab.com/allthingsaurus",
+  "license": "CC Attribution",
+  "license_url": "http://creativecommons.org/licenses/by/4.0/",
+  "url": "https://sketchfab.com/3d-models/cuviers-beaked-whale-a463879e47d24df795ebaecb460c28a2",
+  "note": "cuvier_model"
+ },
+ "pilot": {
+  "file": "pilot.glb",
+  "title": "Downloadable Lowpoly Shortfinned pilot whale",
+  "author": "Major",
+  "author_url": "https://sketchfab.com/majorgalah",
+  "license": "CC Attribution-NonCommercial",
+  "license_url": "http://creativecommons.org/licenses/by-nc/4.0/",
+  "url": "https://sketchfab.com/3d-models/downloadable-lowpoly-shortfinned-pilot-whale-f2acd9971d3f4a00ad3bcea1ba24a9f3"
+ },
+ "narwhal": {
+  "file": "narwhal.glb",
+  "title": "Narwhal or narwhale (Monodon monoceros)",
+  "author": "Cosmic_dust",
+  "author_url": "https://sketchfab.com/Cosmic_dust",
+  "license": "CC Attribution",
+  "license_url": "http://creativecommons.org/licenses/by/4.0/",
+  "url": "https://sketchfab.com/3d-models/narwhal-or-narwhale-monodon-monoceros-38c3d6a171f14186a1c482c7030fb178"
+ },
+ "beluga": {
+  "file": "beluga.glb",
+  "title": "Narwhal or narwhale (Monodon monoceros)",
+  "author": "Cosmic_dust",
+  "author_url": "https://sketchfab.com/Cosmic_dust",
+  "license": "CC Attribution",
+  "license_url": "http://creativecommons.org/licenses/by/4.0/",
+  "url": "https://sketchfab.com/3d-models/narwhal-or-narwhale-monodon-monoceros-38c3d6a171f14186a1c482c7030fb178",
+  "note": "narwhal_model"
+ }
+}

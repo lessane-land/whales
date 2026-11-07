@@ -3,6 +3,7 @@
 // ?dive  ?night  ?deep  ?pal=blue
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import * as BGU from "three/addons/utils/BufferGeometryUtils.js";
 
 const W = innerWidth, H = innerHeight, dpr = Math.min(devicePixelRatio || 1, 2);
 const p = new URLSearchParams(location.search);
@@ -74,6 +75,8 @@ function rgb(c, a = 1) { return `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`
   const water = DEEP ? P.water.deep : NIGHT ? P.water.night : P.water.day;
   const wg = bctx.createLinearGradient(0, Math.max(0, sy), 0, H); water.forEach(s => wg.addColorStop(s[0], rgb(s[1])));
   bctx.fillStyle = wg; bctx.fillRect(0, Math.max(0, sy), W, H);
+  // The sun's warmth on the water, a soft patch under it by day.
+  if (!DEEP && !NIGHT) { const sg = bctx.createRadialGradient(W * .5, sy + 10, 10, W * .5, sy + 10, W * .32); sg.addColorStop(0, "rgba(255,236,190,.55)"); sg.addColorStop(0.5, "rgba(255,236,190,.15)"); sg.addColorStop(1, "rgba(255,236,190,0)"); bctx.fillStyle = sg; bctx.fillRect(0, sy, W, H * 0.4); }
   // A soft glow under the surface, the anime bloom.
   if (!DEEP) { const gl = bctx.createLinearGradient(0, sy, 0, sy + H * 0.35); gl.addColorStop(0, NIGHT ? "rgba(180,220,230,.25)" : "rgba(255,255,255,.45)"); gl.addColorStop(1, "rgba(255,255,255,0)"); bctx.fillStyle = gl; bctx.fillRect(0, sy, W, H * 0.35); }
 })();
@@ -144,8 +147,8 @@ function floorH(x, zw) { const z = zw + 20; let y = FLOOR + Math.sin(x * 0.11) *
   [[-30, 34, 7], [36, 30, 5.5]].forEach(([x, z, r]) => { const fr = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), cel(P.near)); fr.position.set(x, FLOOR - 4, z); fr.rotation.set(0.4, 0.8, 0.2); fr.scale.set(1.4, 0.8, 1); inked(fr, 0.2); scene.add(fr); });
 })();
 seed = 19;
-[[-30, -40, 12, 3], [-24, -30, 8, 2.2], [36, -36, 10, 2.6], [30, -26, 6, 2]].forEach(([x, z, h, r]) => {
-  const g = new THREE.CylinderGeometry(r * 0.55, r, h, 7, 1); g.translate(0, h / 2, 0); g.computeVertexNormals();
+[[-25, -42, 14, 2.4], [-19, -34, 9, 1.7], [-29, -30, 6, 1.5], [34, -38, 11, 2.2], [29, -28, 6, 1.6]].forEach(([x, z, h, r]) => {
+  const g = new THREE.CylinderGeometry(r * 0.35, r, h, 6, 1); g.translate(0, h / 2, 0); g.computeVertexNormals();
   const m = new THREE.Mesh(g, cel(P.rock)); m.position.set(x, FLOOR - 1 + reefY(x), z); m.rotation.y = rnd() * 3; inked(m, 0.14); scene.add(m);
 });
 seed = 8;
@@ -208,9 +211,17 @@ if (!DEEP) {
 seed = 29;
 function cluster(x, z, sc) {
   const g = new THREE.Group(); const y = floorH(x, z);
-  for (let i = 0; i < 6; i++) {
-    const r = (0.5 + rnd() * 0.7) * sc, m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), cel(rnd() < .6 ? P.coral : 0xffb8c8));
-    m.position.set(x + (rnd() - .5) * 3 * sc, y + r * 0.6 + rnd() * 0.6 * sc, z + (rnd() - .5) * 2 * sc); inked(m, 0.08); g.add(m);
+  for (let i = 0; i < 5; i++) {
+    const r = (0.6 + rnd() * 0.8) * sc, dg = new THREE.SphereGeometry(r, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    const dp = dg.attributes.position; for (let k = 0; k < dp.count; k++) { const a = Math.atan2(dp.getZ(k), dp.getX(k)); const f = 1 + 0.08 * Math.sin(a * 7); dp.setX(k, dp.getX(k) * f); dp.setZ(k, dp.getZ(k) * f); } dg.computeVertexNormals();
+    const m = new THREE.Mesh(dg, cel(rnd() < .6 ? P.coral : 0xffb8c8)); m.scale.y = 0.55;
+    m.position.set(x + (rnd() - .5) * 3 * sc, y + rnd() * 0.4 * sc, z + (rnd() - .5) * 2 * sc); inked(m, 0.07); g.add(m);
+  }
+  for (let i = 0; i < 3; i++) {
+    const ax = x + (rnd() - .5) * 3 * sc, az = z + (rnd() - .5) * 2 * sc, pts = [];
+    for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2, len = (0.7 + rnd() * 0.4) * sc; pts.push(ax, y + 0.2, az, ax + Math.cos(a) * len * 0.5, y + 0.2 + len, az + Math.sin(a) * len * 0.5); }
+    const ag = new THREE.BufferGeometry(); ag.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    g.add(new THREE.LineSegments(ag, new THREE.LineBasicMaterial({ color: 0xffe0b0 })));
   }
   for (let i = 0; i < 4; i++) {
     const h = (1 + rnd() * 1.6) * sc, m = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * sc, 0.24 * sc, h, 8), cel(0xffd2a8));
@@ -225,8 +236,9 @@ if (!DEEP) {
   seed = 37;
   for (let i = 0; i < 3; i++) {
     const g = new THREE.Group(), r = 0.45 + rnd() * 0.5;
-    const bell = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), cel(0xfbeff8, { transparent: true, opacity: 0.6 }));
-    inked(bell, 0.07); g.add(bell);
+    const bell = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), new THREE.MeshBasicMaterial({ color: 0xfff0fa, transparent: true, opacity: 0.55 }));
+    inked(bell, 0.05); g.add(bell);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: sparkTex, color: 0xffd6f0, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.setScalar(r * 3); g.add(glow);
     const tn = 7, pts = [];
     for (let k = 0; k < tn; k++) { const a = k / tn * Math.PI * 2, x = Math.cos(a) * r * 0.6, z = Math.sin(a) * r * 0.6; for (let j = 0; j < 8; j++) pts.push(x, -j * 0.3, z); }
     const tg = new THREE.BufferGeometry(); tg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
@@ -255,10 +267,11 @@ const bend = sh => {
       transformed.y += sin(uTime * 1.6 - transformed.x * 0.3 + 1.2) * 0.45 * tail * tail;`);
 };
 const shaders = [];
-new GLTFLoader().load("../models/humpback.glb", gltf => {
-  const root = gltf.scene; root.rotation.y = -Math.PI / 2; root.updateMatrixWorld(true);
-  let geo = null; root.traverse(o => { if (o.isMesh && !geo) geo = o.geometry.clone().applyMatrix4(o.matrixWorld); });
-  for (const k of Object.keys(geo.attributes)) if (k !== "position" && k !== "normal") geo.deleteAttribute(k);
+const MODEL = p.get("m") ? "candidates/" + p.get("m") : "../models/humpback.glb", RY = p.has("ry") ? +p.get("ry") * Math.PI / 180 : -Math.PI / 2, RX = (+p.get("rx") || 0) * Math.PI / 180;
+new GLTFLoader().load(MODEL, gltf => {
+  const root = gltf.scene; root.rotation.set(RX, RY, 0); root.updateMatrixWorld(true);
+  const parts = []; root.traverse(o => { if (o.isMesh) { const g = o.geometry.clone(); for (const k of Object.keys(g.attributes)) if (k !== "position") g.deleteAttribute(k); parts.push((g.index ? g.toNonIndexed() : g).applyMatrix4(o.matrixWorld)); } });
+  let geo = parts.length === 1 ? parts[0] : BGU.mergeGeometries(parts, false);
   geo.computeBoundingBox(); const b = geo.boundingBox, size = new THREE.Vector3(); b.getSize(size); const c = new THREE.Vector3(); b.getCenter(c);
   geo.translate(-c.x, -c.y, -c.z); geo.scale(22 / size.x, 22 / size.x, 22 / size.x); geo.computeBoundingBox(); geo.computeVertexNormals();
   const lo = geo.boundingBox.min, hi = geo.boundingBox.max, pos = geo.attributes.position, cols = new Float32Array(pos.count * 3);

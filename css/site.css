@@ -26,6 +26,10 @@ body {
 }
 
 #sea { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.models { margin: 0 0 12px; padding-left: 18px; }
+.models li { margin: 4px 0; }
+.models a { color: inherit; }
 
 .top {
   position: fixed;
@@ -251,6 +255,7 @@ body:not(.below) .scrub-label { color: var(--ink); text-shadow: none; }
 .about-body { max-height: none; overflow: visible; }
 
 .about-portrait { display: block; width: 100%; height: 170px; margin: 0 0 12px; }
+.about-portrait.gl { border-radius: 12px; background: linear-gradient(rgba(66, 174, 203, 0.35), rgba(16, 60, 96, 0.35)); }
 
 .about-head { display: flex; align-items: center; gap: 10px; margin: 2px 90px 14px 0; }
 
