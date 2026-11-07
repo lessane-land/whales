@@ -17,3 +17,10 @@ ostapblendercg sperm whale and blue whale (CC BY); 777_Boeing beluga (CC BY); an
 CARIMAM humpback, sperm, pygmy sperm, pilot, Cuvier (CC BY-NC-SA, a consistent scientific set); woelper fin whale (CC BY-NC).
 
 CC BY asks for the author's name, the model title, a link to the model and the licence, in the credits sheet.
+
+## Prototypes
+
+- `design/three.html`: my own lofted whale (kept as a record, lost the contest).
+- `design/models.html?m=<uid>.glb`: candidate viewer.
+- `design/world.html`: Allie2k's whale with a real light engine, fog and soft rays. Vane: "a 90s teacher video".
+- `design/poster.html`: no light engine, every triangle one flat colour in four steps, the whale simplified to about 1500 facets. Moods: `?dive`, `?night`, `?deep`, `?bold`, or `#night-dive`. Hosted copy for Vane at https://claude.ai/artifact/3bhExVtEZKQeSk3x8teiio (the model as JSON glTF because the host cannot serve .glb).
