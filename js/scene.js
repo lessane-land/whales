@@ -257,4 +257,4 @@ window.Scene = {
   }
 };
 
-Scene.init(document.getElementById("gl"), "models/manifest.json?v=40");
+Scene.init(document.getElementById("gl"), "models/manifest.json?v=41");

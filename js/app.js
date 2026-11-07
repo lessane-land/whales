@@ -96,7 +96,15 @@
     return t("bio", { date: dateText(w.tagged), days: fmt(w.record_days), dives: fmt(w.record_dives), max: fmt(w.record_max), min: fmt(w.record_longest_min) });
   }
 
-  var lastKey = "", wasBelow = null, lastHero = null, hintUntil = 0, wasUnder = false, underHero = null;
+  // For the children: her depth in floors or towers, her breath against theirs.
+  function kidLine(hero) {
+    var d = Math.round(hero.cur);
+    if (d < 8) return t("kid_surface");
+    var s = d >= 330 ? t("kid_depth_towers", { n: fmt(Math.round(d / 330 * 10) / 10) }) : t("kid_depth_floors", { n: fmt(Math.max(1, Math.round(d / 3))) });
+    var under = Math.round(Sea.underFor(hero) / 60);
+    return s + (under >= 2 ? t("kid_breath", { n: fmt(under) }) : t("kid_breath_short"));
+  }
+  var lastKey = "", wasBelow = null, lastHero = null, hintUntil = 0, wasUnder = false, underHero = null, globeHero = null;
   function onTick(hero, whales, surfaceY, info) {
     if (hero && window.Sound) {
       if (hero !== underHero) { underHero = hero; wasUnder = hero.cur > 50; }
@@ -112,6 +120,11 @@
     if (hero !== lastHero) {
       lastHero = hero;
       document.getElementById("deep-bio").textContent = bioText(w);
+      if (window.Globe && w && typeof w.lat === "number") {
+        Globe.show(w.lat, w.lon);
+        document.getElementById("globe-place").textContent = t("place_" + w.place);
+        document.getElementById("globe-label").textContent = t(w.place_approx ? "place_approx" : "place_tagged");
+      }
     }
     var d = Math.round(hero.cur / 5) * 5;
     var lt = Sea.localTime(hero);
@@ -121,6 +134,7 @@
     document.getElementById("deep-depth").textContent = t("depth_m", { n: fmt(d) });
     document.getElementById("deep-who").textContent = whoText(hero);
     document.getElementById("deep-story").textContent = storyLine(hero, info);
+    document.getElementById("deep-kid").textContent = kidLine(hero);
     if (lt) {
       var ds = new Intl.DateTimeFormat(locale(), { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(lt);
       var ts = new Intl.DateTimeFormat(locale(), { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }).format(lt);
@@ -171,11 +185,12 @@
     document.getElementById("about-here").textContent = hereText(kind);
     var grid = document.getElementById("about-grid");
     grid.innerHTML = "";
-    ["size", "weight", "lives", "dives", "eats", "sounds"].forEach(function (f) {
+    ["kid", "wow", "size", "weight", "lives", "dives", "eats", "sounds"].forEach(function (f) {
       var dt = document.createElement("dt"), dd = document.createElement("dd");
       dt.innerHTML = '<svg><use href="#i-' + f + '"/></svg><span></span>';
       dt.querySelector("span").textContent = t("sp_" + f);
       dd.textContent = t("sp_" + kind + "_" + f);
+      if (f === "kid" || f === "wow") dd.className = "about-" + f;
       grid.appendChild(dt); grid.appendChild(dd);
     });
     drawPortrait(kind);
@@ -242,6 +257,7 @@
       data = d;
       d.whales.forEach(function (w) { byId[w.id] = w; });
       var q = new URLSearchParams(location.search);
+      if (window.Globe) Globe.init(document.getElementById("globe"), "data/land.json?v=41");
       Sea.init(document.getElementById("sea"), d, {
         whale: q.get("whale"), at: q.has("at") ? parseFloat(q.get("at")) : undefined, gallery: q.has("gallery"),
         onTick: onTick,
@@ -373,7 +389,7 @@
 
   start();
   // The 3D models, credited by title, author and licence.
-  fetch("models/manifest.json?v=40").then(function (r) { return r.json(); }).then(function (man) {
+  fetch("models/manifest.json?v=41").then(function (r) { return r.json(); }).then(function (man) {
     var ul = document.getElementById("credits-models"), seen = {};
     if (!ul) return;
     Object.keys(man).forEach(function (k) {
