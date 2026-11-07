@@ -94,6 +94,8 @@ if (!DEEP) {
   const fp = []; for (let i = 0; i <= 120; i++) fp.push(-130 + i * 260 / 120, SURF, -4.2);
   const fg = new THREE.BufferGeometry(); fg.setAttribute("position", new THREE.Float32BufferAttribute(fp, 3));
   surface.userData.foam = new THREE.Line(fg, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: NIGHT ? 0.5 : 1 })); scene.add(surface.userData.foam);
+  // Two fainter wave lines further back, the banding of a drawn sea.
+  surface.userData.lines = [-12, -21].map((z, k) => { const q = []; for (let i = 0; i <= 120; i++) q.push(-130 + i * 260 / 120, SURF, z); const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.Float32BufferAttribute(q, 3)); const l = new THREE.Line(lg, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: (NIGHT ? 0.2 : 0.45) / (k + 1) })); l.userData.z = z; scene.add(l); return l; });
 }
 
 // Light beams: wide, soft, diagonal, breathing. The anime kind.
@@ -127,15 +129,12 @@ scene.add(sparks);
 
 // Floor, ridge, near rocks, pillars: smooth cel with ink edges.
 const reefY = x => (x < -18 ? Math.min(9, (-18 - x) * 0.4) : 0);
+// Height of the sand at world x, z (the floor mesh sits at z = -20).
+function floorH(x, zw) { const z = zw + 20; let y = FLOOR + Math.sin(x * 0.11) * 0.9 + Math.sin(z * 0.17 + 1) * 0.7 + Math.sin((x + z) * 0.23) * 0.5; if (x < -18) y += reefY(x) + Math.sin(x * 0.4) * 1.2 + Math.sin(z * 0.3) * 0.9; return y; }
 (function floor() {
   const g = new THREE.PlaneGeometry(300, 130, 60, 26); g.rotateX(-Math.PI / 2);
-  const pos = g.attributes.position; seed = 21;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), z = pos.getZ(i);
-    let y = FLOOR + Math.sin(x * 0.11) * 0.9 + Math.sin(z * 0.17 + 1) * 0.7 + Math.sin((x + z) * 0.23) * 0.5;
-    if (x < -18) y += reefY(x) + Math.sin(x * 0.4) * 1.2 + Math.sin(z * 0.3) * 0.9;
-    pos.setY(i, y);
-  }
+  const pos = g.attributes.position;
+  for (let i = 0; i < pos.count; i++) pos.setY(i, floorH(pos.getX(i), pos.getZ(i) - 20) );
   g.computeVertexNormals();
   const m = new THREE.Mesh(g, cel(P.floor)); m.position.z = -20; scene.add(m);
   const rg = new THREE.PlaneGeometry(320, 40, 40, 6); rg.rotateX(-Math.PI / 2);
@@ -193,6 +192,57 @@ const bubTex = (() => { const c = document.createElement("canvas"); c.width = c.
 const bubG = new THREE.BufferGeometry(); bubG.setAttribute("position", new THREE.BufferAttribute(bubPos, 3));
 scene.add(new THREE.Points(bubG, new THREE.PointsMaterial({ map: bubTex, size: 0.7, transparent: true, opacity: 0.9, depthWrite: false })));
 
+
+// Caustic ripples: wobbling bright lines lying on the sand.
+const ripples = [];
+if (!DEEP) {
+  seed = 23;
+  for (let i = 0; i < 7; i++) {
+    const z = -36 + i * 6 + rnd() * 3, n = 70, pts = new Float32Array(n * 3);
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pts, 3));
+    const m = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: NIGHT ? 0.08 : 0.22, blending: THREE.AdditiveBlending, depthWrite: false }));
+    m.userData = { z, ph: rnd() * 6, k: 0.5 + rnd() * 0.5 }; ripples.push(m); scene.add(m);
+  }
+}
+// Coral clusters on the reef: round heads and tubes in coral and pale pink, inked.
+seed = 29;
+function cluster(x, z, sc) {
+  const g = new THREE.Group(); const y = floorH(x, z);
+  for (let i = 0; i < 6; i++) {
+    const r = (0.5 + rnd() * 0.7) * sc, m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), cel(rnd() < .6 ? P.coral : 0xffb8c8));
+    m.position.set(x + (rnd() - .5) * 3 * sc, y + r * 0.6 + rnd() * 0.6 * sc, z + (rnd() - .5) * 2 * sc); inked(m, 0.08); g.add(m);
+  }
+  for (let i = 0; i < 4; i++) {
+    const h = (1 + rnd() * 1.6) * sc, m = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * sc, 0.24 * sc, h, 8), cel(0xffd2a8));
+    m.position.set(x + (rnd() - .5) * 3 * sc, y + h / 2, z + (rnd() - .5) * 2 * sc); m.rotation.z = (rnd() - .5) * 0.5; inked(m, 0.06); g.add(m);
+  }
+  scene.add(g);
+}
+cluster(-26, -10, 1); cluster(-21, -16, 0.8); cluster(33, -8, 0.9); cluster(-31, -4, 0.7);
+// Jellyfish: pale bells with trailing threads, drifting up and swaying.
+const jellies = [];
+if (!DEEP) {
+  seed = 37;
+  for (let i = 0; i < 3; i++) {
+    const g = new THREE.Group(), r = 0.45 + rnd() * 0.5;
+    const bell = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), cel(0xfbeff8, { transparent: true, opacity: 0.6 }));
+    inked(bell, 0.07); g.add(bell);
+    const tn = 7, pts = [];
+    for (let k = 0; k < tn; k++) { const a = k / tn * Math.PI * 2, x = Math.cos(a) * r * 0.6, z = Math.sin(a) * r * 0.6; for (let j = 0; j < 8; j++) pts.push(x, -j * 0.3, z); }
+    const tg = new THREE.BufferGeometry(); tg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    const idx = []; for (let k = 0; k < tn; k++) for (let j = 0; j < 7; j++) idx.push(k * 8 + j, k * 8 + j + 1);
+    tg.setIndex(idx); const threads = new THREE.LineSegments(tg, new THREE.LineBasicMaterial({ color: 0xf4e6f6, transparent: true, opacity: 0.7 }));
+    threads.userData.base = pts.slice(); g.add(threads);
+    g.position.set(24 + rnd() * 20 - (i === 2 ? 50 : 0), -14 + rnd() * 8, -22 + rnd() * 10); g.userData = { x0: g.position.x, y0: g.position.y, ph: rnd() * 6, k: 0.3 + rnd() * 0.3, threads, bell };
+    jellies.push(g); scene.add(g);
+  }
+}
+// A second, smaller school, darker, further back.
+const fish2N = DEEP ? 0 : 32, fish2 = new THREE.InstancedMesh(new THREE.ConeGeometry(0.1, 0.42, 3).rotateZ(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col(0x9fe6e0) }), Math.max(1, fish2N)); fish2.count = fish2N;
+const fish2Seed = []; seed = 43;
+for (let i = 0; i < fish2N; i++) fish2Seed.push({ ox: (rnd() - .5) * 5, oy: (rnd() - .5) * 2, oz: (rnd() - .5) * 3, ph: rnd() * 6 });
+scene.add(fish2);
+
 // The whale: smooth, cel shaded, vertex coloured by region, inked, with a big eye placed on the skin.
 const whale = new THREE.Group(); scene.add(whale);
 let whaleMat = null, inkMat = null;
@@ -229,18 +279,38 @@ new GLTFLoader().load("../models/humpback.glb", gltf => {
   whaleMat.onBeforeCompile = sh => { bend(sh); shaders.push(sh); };
   const mesh = new THREE.Mesh(geo, whaleMat); whale.add(mesh);
   const ink = inked(mesh, 0.16, sh => { bend(sh); shaders.push(sh); });
-  // The eye: cast a ray from the side onto the skin, behind the mouth corner, a little under the midline.
   mesh.updateMatrixWorld(true);
-  const ray = new THREE.Raycaster(new THREE.Vector3(-6.9, 0.35, 30), new THREE.Vector3(0, 0, -1));
-  const hit = ray.intersectObject(mesh, false)[0];
-  console.log("eye", hit ? hit.point.toArray().map(v => v.toFixed(2)).join(",") : "miss");
+  // Helpers: a point on the skin found by a ray, and a thin tube through points.
+  const caster = new THREE.Raycaster();
+  const skin = (origin, dir) => { caster.set(origin, dir.normalize()); const h = caster.intersectObject(mesh, false)[0]; return h ? { p: h.point, n: h.face.normal } : null; };
+  const tube = (pts, r, color, extra = {}) => { if (pts.length < 2) return null; const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 3, r, 5, false), new THREE.MeshBasicMaterial({ color, ...extra })); whale.add(m); return m; };
+  // A pale highlight along the ridge of the back, head to dorsal.
+  const ridge = []; for (let x = -10.2; x <= 4; x += 0.5) { const h = skin(new THREE.Vector3(x, 30, 0.2), new THREE.Vector3(0, -1, 0)); if (h) ridge.push(h.p.clone().add(new THREE.Vector3(0, 0.03, 0.08))); }
+  tube(ridge, 0.07, 0xd8f6f2, { transparent: true, opacity: NIGHT || DEEP ? 0.35 : 0.8 });
+  // Throat pleats: ink lines under the chin, on the side we see.
+  for (const deg of [38, 52, 66, 80]) {
+    const a = deg * Math.PI / 180, pts = [];
+    for (let x = -10.4; x <= -0.5; x += 0.45) { const h = skin(new THREE.Vector3(x, -30 * Math.sin(a), 30 * Math.cos(a)), new THREE.Vector3(0, Math.sin(a), -Math.cos(a))); if (h) pts.push(h.p.clone().add(h.n.clone().multiplyScalar(0.03))); }
+    tube(pts, 0.035, P.line, { transparent: true, opacity: 0.55 });
+  }
+  // The mouth: one ink line from the tip back along the jaw.
+  const mouth = []; for (let x = -10.9; x <= -6.4; x += 0.3) { const a = (14 + (x + 10.9) * 2) * Math.PI / 180; const h = skin(new THREE.Vector3(x, -30 * Math.sin(a), 30 * Math.cos(a)), new THREE.Vector3(0, Math.sin(a), -Math.cos(a))); if (h) mouth.push(h.p.clone().add(h.n.clone().multiplyScalar(0.03))); }
+  tube(mouth, 0.06, P.line);
+  // Tubercles: small bumps in rows on the rostrum.
+  for (const z of [0, 0.55, -0.55]) for (let x = -10.4; x <= -6.8; x += 0.6) { const h = skin(new THREE.Vector3(x, 30, z), new THREE.Vector3(0, -1, 0)); if (h) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.11, 6, 5), new THREE.MeshBasicMaterial({ color: P.line })); b.position.copy(h.p); whale.add(b); } }
+  // The eye: almond, with a dark iris and a glint, laid on the skin behind the mouth corner.
+  const hit = skin(new THREE.Vector3(-6.6, 0.3, 30), new THREE.Vector3(0, 0, -1));
   const eye = new THREE.Group();
-  const white = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24), new THREE.MeshBasicMaterial({ color: 0xffffff })); eye.add(white);
-  const iris = new THREE.Mesh(new THREE.CircleGeometry(0.4, 24), new THREE.MeshBasicMaterial({ color: P.line })); iris.position.set(0.1, -0.02, 0.01); eye.add(iris);
-  const glint = new THREE.Mesh(new THREE.CircleGeometry(0.14, 12), new THREE.MeshBasicMaterial({ color: 0xffffff })); glint.position.set(0.22, 0.14, 0.02); eye.add(glint);
-  const lid = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.74, 24), new THREE.MeshBasicMaterial({ color: P.line })); lid.position.z = 0.005; eye.add(lid);
-  if (hit) { eye.position.copy(hit.point).add(hit.face.normal.clone().multiplyScalar(0.05)); eye.lookAt(hit.point.clone().add(hit.face.normal)); }
-  else eye.position.set(-6.9, 0.35, 1.6);
+  const white = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), new THREE.MeshBasicMaterial({ color: 0xffffff })); white.scale.set(1.25, 0.8, 1); eye.add(white);
+  const iris = new THREE.Mesh(new THREE.CircleGeometry(0.27, 24), new THREE.MeshBasicMaterial({ color: col(0x0d3a4a) })); iris.position.set(0.08, 0, 0.01); eye.add(iris);
+  const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.14, 16), new THREE.MeshBasicMaterial({ color: P.line })); pupil.position.set(0.1, 0, 0.02); eye.add(pupil);
+  const glint = new THREE.Mesh(new THREE.CircleGeometry(0.08, 12), new THREE.MeshBasicMaterial({ color: 0xffffff })); glint.position.set(0.17, 0.1, 0.03); eye.add(glint);
+  const lid = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 24), new THREE.MeshBasicMaterial({ color: P.line })); lid.scale.set(1.25, 0.8, 1); lid.position.z = 0.005; eye.add(lid);
+  if (hit) { eye.position.copy(hit.p).add(hit.n.clone().multiplyScalar(0.05)); eye.lookAt(hit.p.clone().add(hit.n)); }
+  else eye.position.set(-6.6, 0.3, 1.5);
+  // A far whale, a silhouette in the haze, crossing slowly.
+  const farMat = new THREE.MeshBasicMaterial({ color: col(DEEP ? 0x0a3044 : 0x12607a), transparent: true, opacity: 0.55 });
+  const far = new THREE.Mesh(geo, farMat); far.scale.setScalar(0.34); far.position.set(30, -11, -48); far.rotation.set(0, 0.25, 0.06); scene.add(far); whale.userData.far = far;
   whale.add(eye); whale.userData.eye = eye;
   whale.rotation.set(0, DIVE ? 0.3 : 0.42, DIVE ? 0.95 : 0);
   whale.position.set(DIVE ? -1 : -4, DIVE ? -6 : -5, 0);
@@ -258,6 +328,7 @@ function frame() {
     const fpos = surface.userData.foam.geometry.attributes.position;
     for (let i = 0; i < fpos.count; i++) fpos.setY(i, SURF + 0.1 + wave(fpos.getX(i), -4.2));
     fpos.needsUpdate = true;
+    surface.userData.lines.forEach(l => { const lp = l.geometry.attributes.position; for (let i = 0; i < lp.count; i++) lp.setY(i, SURF + 0.08 + wave(lp.getX(i), l.userData.z)); lp.needsUpdate = true; });
   }
   rays.children.forEach(r => { r.rotation.z = r.userData.z0 + Math.sin(t * 0.3 * r.userData.k + r.userData.x) * 0.03; r.material.opacity = r.userData.a * (0.65 + 0.35 * Math.sin(t * 0.6 * r.userData.k + r.userData.x * 3)); });
   const sp = sparks.geometry.attributes.position; for (let i = 0; i < sparkN; i++) { let y = sp.getY(i) - 0.008; if (y < -20) y = 8; sp.setY(i, y); sp.setX(i, sp.getX(i) + Math.sin(t * 0.4 + i) * 0.004); } sp.needsUpdate = true;
@@ -270,6 +341,21 @@ function frame() {
     m4.compose(v3, q, one); fish.setMatrixAt(i, m4);
   }
   if (fishN) fish.instanceMatrix.needsUpdate = true;
+  for (let i = 0; i < fish2N; i++) {
+    const f = fish2Seed[i], cx = -20 + Math.sin(t * 0.11 + 2) * 16, cy = -8 + Math.sin(t * 0.17) * 2.5, dir = Math.cos(t * 0.11 + 2) * 16 * 0.11;
+    v3.set(cx + f.ox + Math.sin(t * 2 + f.ph) * 0.3, cy + f.oy + Math.sin(t * 1.3 + f.ph) * 0.2, -30 + f.oz);
+    e3.set(0, 0, Math.atan2(Math.cos(t * 0.17) * 2.5 * 0.17, dir) + (dir < 0 ? Math.PI : 0)); q.setFromEuler(e3);
+    m4.compose(v3, q, one); fish2.setMatrixAt(i, m4);
+  }
+  if (fish2N) fish2.instanceMatrix.needsUpdate = true;
+  ripples.forEach(r => { const pos = r.geometry.attributes.position, n = pos.count; for (let i = 0; i < n; i++) { const x = -70 + i * 140 / (n - 1), z = r.userData.z + Math.sin(x * 0.35 + t * r.userData.k + r.userData.ph) * 1.6 + Math.sin(x * 0.9 - t * 0.7) * 0.5; pos.setXYZ(i, x, floorH(x, z) + 0.25, z); } pos.needsUpdate = true; });
+  jellies.forEach(j => {
+    j.position.x = j.userData.x0 + Math.sin(t * 0.2 * j.userData.k + j.userData.ph) * 3; j.position.y = j.userData.y0 + ((t * 0.25 * j.userData.k + j.userData.ph) % 14) - 2;
+    const pulse = 1 + Math.sin(t * 1.8 + j.userData.ph) * 0.08; j.userData.bell.scale.set(pulse, 1 / pulse, pulse);
+    const pos = j.userData.threads.geometry.attributes.position, base = j.userData.threads.userData.base;
+    for (let i = 0; i < pos.count; i++) { const y = base[i * 3 + 1]; pos.setX(i, base[i * 3] + Math.sin(t * 1.2 + j.userData.ph + y * 1.5) * y * -0.12); } pos.needsUpdate = true;
+  });
+  if (whale.userData.far) { const f = whale.userData.far; f.position.x = 28 - ((t * 0.3 + 20) % 90); }
   shaders.forEach(sh => sh.uniforms.uTime.value = t);
   if (whale.children.length) {
     const hole = whale.localToWorld(new THREE.Vector3(-5.5, 2.2, 0));

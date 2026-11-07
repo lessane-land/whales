@@ -13,12 +13,14 @@
   .type .m { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 12px; color: rgba(234,244,247,.55); margin-top: 8px; }
   .title { position: fixed; left: 32px; top: 28px; color: #eaf4f7; font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 44px; text-shadow: 0 1px 14px rgba(0,0,0,.4); }
   .title small { display: block; font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 13px; opacity: .7; margin-top: 4px; }
+  .vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(4,18,30,.45) 100%); }
 </style>
 <script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.170.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/" } }</script>
 </head>
 <body>
 <canvas id="back"></canvas>
 <canvas id="gl"></canvas>
+<div class="vignette"></div>
 <div class="title">Ballenas<small>Ballenas reales, inmersión a inmersión</small></div>
 <div class="type"><div class="d">30 m</div><div class="w">Jorobada Samovar</div><div class="s">Gira de costado sobre la arena a 30 metros, barriendo lanzones.</div><div class="m">Banco de Stellwagen, julio de 2009 · 90 veces más rápido</div></div>
 <script type="module" src="anime.js"></script>
