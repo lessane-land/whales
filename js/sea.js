@@ -677,7 +677,9 @@
     if (hero) {
       if (up) {
         // Breathing: her back and blowhole ride above the line, with a slow bob.
-        hy = sy + (S3 ? 13 : 7) * hs * hb + Math.sin(now / 1700) * 2.5;   // the 3D body is centred, so it sits deeper to show only her back
+        // Her back and blowhole ride above the line. The 3D body is centred, so it sits by its own height.
+        var d3 = S3 && S3.dims(hero.kind);
+        hy = sy + (d3 ? Math.max(4, d3.top * 100 - 4) : 7) * hs * hb + Math.sin(now / 1700) * 2.5;
         if (now > nextBreath) { blowUntil = now + 2000; nextBreath = now + Math.max(2600, (9000 + Math.random() * 5000) / Math.sqrt(SPEED)) + Math.random() * 1200; }
         wasUp = true;
       } else {
@@ -685,7 +687,8 @@
         if (hero.cur > 30) flukeUntil = 0;
         if (!flukeUp) {
           // Keep the whole body under the surface line, whatever her angle.
-          var reach = 78 * hs * hb * Math.abs(Math.sin(hero.pitch)) + 16 * hs * hb * Math.cos(hero.pitch);
+          var d3b = S3 && S3.dims(hero.kind);
+          var reach = (d3b ? d3b.hl * 100 : 78) * hs * hb * Math.abs(Math.sin(hero.pitch)) + (d3b ? d3b.top * 100 + 2 : 16) * hs * hb * Math.cos(hero.pitch);
           if (hy - reach < sy) hy = sy + reach;
         }
       }

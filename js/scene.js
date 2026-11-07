@@ -19,7 +19,9 @@ const PAL = {
   narwhal: [0x5d6a72, 0x8f9aa0, 0xe8eef0]
 };
 // Where the eye sits, as fractions of the length (from the centre) and of the height.
-const EYE = { humpback: [-0.31, 0.02], sperm: [-0.23, -0.04], blue: [-0.3, 0.0], fin: [-0.3, 0.0], cuvier: [-0.33, 0.01], blainville: [-0.33, 0.01], pilot: [-0.34, 0.0], beluga: [-0.33, 0.02], narwhal: [-0.2, 0.02] };
+// Where the eye sits: x as a fraction of the length from the centre, y as a fraction of the body's
+// height at that x (0 the belly, 1 the back). Measured on the skin, so it works for every model.
+const EYE = { humpback: [-0.31, 0.42], sperm: [-0.22, 0.3], blue: [-0.3, 0.4], fin: [-0.3, 0.4], cuvier: [-0.33, 0.5], blainville: [-0.33, 0.5], pilot: [-0.34, 0.45], beluga: [-0.33, 0.5], narwhal: [-0.2, 0.5] };
 const BALEEN = { humpback: 1, blue: 1, fin: 1 };
 
 const grad = new THREE.DataTexture(new Uint8Array([70, 70, 70, 255, 150, 150, 150, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat);
@@ -34,11 +36,18 @@ const rays = new THREE.Group();
 
 function bendShader(sh) {
   sh.uniforms.uTime = { value: 0 }; sh.uniforms.uBeat = { value: 1 };
-  sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uBeat;")
+  sh.uniforms.uPhase = { value: 0 };
+  sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uTime; uniform float uBeat; uniform float uPhase;")
     .replace("#include <begin_vertex>", `#include <begin_vertex>
-      float tail = max(0.0, (transformed.x - 0.05) / 0.32);
-      transformed.z += sin(uTime * 1.6 * uBeat - transformed.x * 6.5) * 0.032 * uBeat * tail * tail;
-      transformed.y += sin(uTime * 1.6 * uBeat - transformed.x * 6.5 + 1.2) * 0.02 * uBeat * tail * tail;`);
+      // A wave travels down the body: almost nothing at the head, growing past the dorsal, full at the fluke.
+      float along = clamp((transformed.x + 0.5), 0.0, 1.0);
+      float amp = 0.004 + 0.06 * pow(max(0.0, along - 0.45) / 0.55, 2.2);
+      float ph = uTime * 1.7 * uBeat - transformed.x * 7.0 + uPhase;
+      transformed.z += sin(ph) * amp * uBeat;
+      transformed.y += sin(ph + 1.3) * amp * 0.55 * uBeat;
+      // The fluke twists a little against the stroke, as a real one does.
+      float fl = max(0.0, (transformed.x - 0.36) / 0.14);
+      transformed.y += cos(ph) * transformed.z * 0.35 * fl * uBeat;`);
   shaders.push(sh);
 }
 
@@ -71,37 +80,42 @@ function build(kind, geo) {
   const caster = new THREE.Raycaster();
   const skin = (o, d) => { caster.set(o, d.normalize()); const h = caster.intersectObject(mesh, false)[0]; return h ? { p: h.point, n: h.face.normal } : null; };
   const tube = (pts, r, color, extra = {}) => { if (pts.length < 2) return; const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 3, r, 5, false), new THREE.MeshBasicMaterial({ color, ...extra })); m.userData.detail = true; g.add(m); };
-  const ht = hi.y - lo.y;
+  // The body's top and bottom at an x, on the midplane, and a point on the skin at an angle below the side.
+  const span = x => { const top = skin(new THREE.Vector3(x, 2, 0), new THREE.Vector3(0, -1, 0)), bot = skin(new THREE.Vector3(x, -2, 0), new THREE.Vector3(0, 1, 0)); return top && bot ? { top: top.p.y, bot: bot.p.y } : null; };
+  const around = (x, deg) => { const sp = span(x); if (!sp) return null; const a = deg * Math.PI / 180, cy = (sp.top + sp.bot) / 2; return skin(new THREE.Vector3(x, cy - 2 * Math.sin(a), 2 * Math.cos(a)), new THREE.Vector3(0, Math.sin(a), -Math.cos(a))); };
   // Ridge light along the back, from the head to two thirds back.
   const ridge = []; for (let x = -0.46; x <= 0.18; x += 0.025) { const h = skin(new THREE.Vector3(x, 2, 0.01), new THREE.Vector3(0, -1, 0)); if (h) ridge.push(h.p.clone().add(new THREE.Vector3(0, 0.001, 0.004))); }
   tube(ridge, 0.0035, 0xd8f6f2, { transparent: true, opacity: 0.8 });
   // Mouth: an ink line from the tip back along the jaw.
   const mouth = []; const mx0 = -0.49, mx1 = kind === "sperm" ? -0.2 : -0.28;
-  for (let x = mx0; x <= mx1; x += 0.015) { const a = (12 + (x - mx0) / (mx1 - mx0) * 10) * Math.PI / 180; const h = skin(new THREE.Vector3(x, -2 * Math.sin(a), 2 * Math.cos(a)), new THREE.Vector3(0, Math.sin(a), -Math.cos(a))); if (h) mouth.push(h.p.clone().add(h.n.clone().multiplyScalar(0.0015))); }
+  for (let x = mx0; x <= mx1; x += 0.015) { const h = around(x, kind === "sperm" ? 34 + (x - mx0) / (mx1 - mx0) * 6 : 14 + (x - mx0) / (mx1 - mx0) * 10); if (h) mouth.push(h.p.clone().add(h.n.clone().multiplyScalar(0.0015))); }
   tube(mouth, 0.003, INK);
   if (BALEEN[kind]) for (const deg of [40, 55, 70, 85]) {
-    const a = deg * Math.PI / 180, pts = [];
-    for (let x = -0.47; x <= -0.02; x += 0.02) { const h = skin(new THREE.Vector3(x, -2 * Math.sin(a), 2 * Math.cos(a)), new THREE.Vector3(0, Math.sin(a), -Math.cos(a))); if (h) pts.push(h.p.clone().add(h.n.clone().multiplyScalar(0.0015))); }
+    const pts = [];
+    for (let x = -0.47; x <= -0.02; x += 0.02) { const h = around(x, deg); if (h) pts.push(h.p.clone().add(h.n.clone().multiplyScalar(0.0015))); }
     tube(pts, 0.0018, INK, { transparent: true, opacity: 0.5 });
   }
   if (kind === "humpback") for (const z of [0, 0.025, -0.025]) for (let x = -0.47; x <= -0.31; x += 0.027) { const h = skin(new THREE.Vector3(x, 2, z), new THREE.Vector3(0, -1, 0)); if (h) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.005, 6, 5), new THREE.MeshBasicMaterial({ color: INK })); b.position.copy(h.p); b.userData.detail = true; g.add(b); } }
   // The eye.
-  const e = EYE[kind] || EYE.sperm, hit = skin(new THREE.Vector3(e[0], e[1] * ht, 2), new THREE.Vector3(0, 0, -1));
-  const eye = new THREE.Group(); const r = 0.019;
+  const e = EYE[kind] || EYE.sperm, esp = span(e[0]), ey = esp ? esp.bot + (esp.top - esp.bot) * e[1] : 0;
+  const hit = skin(new THREE.Vector3(e[0], ey, 2), new THREE.Vector3(0, 0, -1));
+  const eye = new THREE.Group(); const r = kind === "sperm" || kind === "blue" || kind === "fin" ? 0.015 : 0.019;
   const white = new THREE.Mesh(new THREE.CircleGeometry(r, 20), new THREE.MeshBasicMaterial({ color: 0xffffff })); white.scale.set(1.25, 0.8, 1); eye.add(white);
   const iris = new THREE.Mesh(new THREE.CircleGeometry(r * 0.64, 20), new THREE.MeshBasicMaterial({ color: 0x0d3a4a })); iris.position.set(r * 0.2, 0, 0.0005); eye.add(iris);
   const pupil = new THREE.Mesh(new THREE.CircleGeometry(r * 0.34, 14), new THREE.MeshBasicMaterial({ color: INK })); pupil.position.set(r * 0.24, 0, 0.001); eye.add(pupil);
   const glint = new THREE.Mesh(new THREE.CircleGeometry(r * 0.2, 10), new THREE.MeshBasicMaterial({ color: 0xffffff })); glint.position.set(r * 0.4, r * 0.24, 0.0015); eye.add(glint);
   const lid = new THREE.Mesh(new THREE.RingGeometry(r, r * 1.18, 20), new THREE.MeshBasicMaterial({ color: INK })); lid.scale.set(1.25, 0.8, 1); lid.position.z = 0.0002; eye.add(lid);
-  if (hit) { eye.position.copy(hit.p).add(hit.n.clone().multiplyScalar(0.002)); eye.lookAt(hit.p.clone().add(hit.n)); } else eye.position.set(e[0], e[1] * ht, (hi.z - lo.z) / 2);
+  if (hit) { eye.position.copy(hit.p).add(hit.n.clone().multiplyScalar(0.002)); eye.lookAt(hit.p.clone().add(hit.n)); } else eye.position.set(e[0], ey, (hi.z - lo.z) / 2);
   eye.userData.detail = true; g.add(eye); g.userData.eye = eye;
   return g;
 }
 
 // A silhouette for the far whales: one flat colour, no outline.
 function silhouette(geo) {
-  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x16556e, transparent: true, opacity: 0.7 }));
-  const g = new THREE.Group(); g.add(m); g.userData.flat = m; return g;
+  const g = new THREE.Group(); g.userData.shaders = [];
+  const mat = new THREE.MeshBasicMaterial({ color: 0x16556e, transparent: true, opacity: 0.7 });
+  mat.onBeforeCompile = sh => { bendShader(sh); g.userData.shaders.push(sh); };
+  const m = new THREE.Mesh(geo, mat); g.add(m); g.userData.flat = m; return g;
 }
 
 function ensure(id, kind, flat) {
@@ -141,8 +155,11 @@ function resize(w, h, d) {
 }
 
 let portraitR = null, portraitScene = null, portraitCam = null, portraitWhale = null;
+const dims = {};
 window.Scene = {
   ready: false,
+  // The model's half height and half length as fractions of its length, for the engine's surface rules.
+  dims(kind) { return dims[kind] || null; },
   // The species sheet's portrait: the same cel whale, level, on a transparent canvas the app styles.
   portrait(canvas, kind) {
     if (!kinds[kind]) return false;
@@ -176,7 +193,7 @@ window.Scene = {
       Object.keys(man).forEach(kind => {
         loader.load("models/" + man[kind].file, gltf => {
           let geo = null; gltf.scene.traverse(o => { if (o.isMesh && !geo) geo = o.geometry; });
-          if (geo) { if (geo.index) geo = geo.toNonIndexed(); geo.computeVertexNormals(); kinds[kind] = geo; }
+          if (geo) { if (geo.index) geo = geo.toNonIndexed(); geo.computeVertexNormals(); geo.computeBoundingBox(); const bb = geo.boundingBox; dims[kind] = { hh: (bb.max.y - bb.min.y) / 2, top: bb.max.y, hl: (bb.max.x - bb.min.x) / 2 }; kinds[kind] = geo; }
           if (--left === 0) Scene.ready = true;
         }, undefined, () => { if (--left === 0) Scene.ready = true; });
       });
@@ -199,13 +216,29 @@ window.Scene = {
     frameReqs.forEach(r => {
       const g = ensure(r.id, r.kind, r.flat); if (!g) return;
       const len = 100 * r.scale;   // pixels, nose to fluke
+      const u = g.userData;
+      // Motion memory: where she was last frame gives the bank of a turn and a smooth pitch.
+      if (u.px === undefined) { u.px = r.x; u.py = r.y; u.pitch = r.pitch; u.bank = 0; u.yaw = r.flat ? 0.1 : 0.36; u.phase = (r.id.length * 1.7) % 6.28; }
+      const dx = r.x - u.px, dy = r.y - u.py; u.px = r.x; u.py = r.y;
+      u.pitch += (r.pitch - u.pitch) * 0.12;
+      const bankTarget = Math.max(-0.35, Math.min(0.35, dx * 0.08)) + (r.flat ? 0 : Math.sin(t * 0.23 + u.phase) * 0.05);
+      u.bank += (bankTarget - u.bank) * 0.04;
+      const yawTarget = r.flat ? 0.1 : 0.36 + Math.sin(t * 0.11 + u.phase) * 0.1 + Math.max(-0.25, Math.min(0.25, -dx * 0.03));
+      u.yaw += (yawTarget - u.yaw) * 0.03;
       g.position.set(r.x, -r.y, r.flat ? -20 : 0);
       g.scale.setScalar(len);
-      g.rotation.set(0, r.flat ? 0.1 : 0.36, -r.pitch);
-      if (r.flat) { const m = g.userData.flat.material; m.opacity = r.alpha; m.color.set(r.color || 0x16556e); }
-      else if (g.userData.eye) { const ph = (t * 0.37 + r.id.length) % 1; g.userData.eye.scale.y = ph > 0.96 ? 0.1 : 1; }
+      g.rotation.set(u.bank, u.yaw, -u.pitch);
+      if (r.flat) { const m = u.flat.material; m.opacity = r.alpha; m.color.set(r.color || 0x16556e); }
+      else if (u.eye) {
+        // A blink every few seconds, closing fast and opening a touch slower; the pupil leans where she goes.
+        const cyc = (t * 0.3 + u.phase) % 1, k = cyc > 0.94 ? Math.sin((cyc - 0.94) / 0.06 * Math.PI) : 0;
+        u.eye.scale.y = 1 - k * 0.92;
+        const pupil = u.eye.children[2], iris = u.eye.children[1];
+        const look = Math.max(-0.006, Math.min(0.006, -dy * 0.0006)) ;
+        pupil.position.y = look; iris.position.y = look * 0.7;
+      }
       g.visible = true; seen[r.id + (r.flat ? ":flat" : "")] = 1;
-      const beat = 0.4 + (r.speed || 0) * 0.9; (g.userData.shaders || []).forEach(sh => { sh.uniforms.uBeat.value = beat; });
+      const beat = 0.45 + (r.speed || 0) * 1.1; (u.shaders || []).forEach(sh => { sh.uniforms.uBeat.value = beat; sh.uniforms.uPhase.value = u.phase; });
     });
     Object.keys(pool).forEach(k => { if (!seen[k]) pool[k].visible = false; });
     shaders.forEach(sh => { sh.uniforms.uTime.value = t; });
@@ -219,4 +252,4 @@ window.Scene = {
   }
 };
 
-Scene.init(document.getElementById("gl"), "models/manifest.json?v=38");
+Scene.init(document.getElementById("gl"), "models/manifest.json?v=39");

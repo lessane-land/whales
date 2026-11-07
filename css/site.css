@@ -6,6 +6,10 @@
   --foam-mute: rgba(234, 244, 247, 0.42);
   --line: rgba(234, 244, 247, 0.16);
   --panel: rgba(8, 22, 40, 0.55);
+  --cel-ink: #0a2438;
+  --cel-teal: #1f9aa6;
+  --cel-pale: #9ee9e2;
+  --cel-foam: #eaf7f6;
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -60,24 +64,27 @@ body {
 
 .pill {
   appearance: none;
-  border: 1px solid rgba(11, 31, 58, 0.25);
-  background: rgba(255, 255, 255, 0.35);
-  color: var(--ink);
+  border: 2px solid var(--cel-ink);
+  background: var(--cel-foam);
+  color: var(--cel-ink);
   font: inherit;
   font-size: 13px;
-  padding: 6px 12px;
+  padding: 5px 12px;
   border-radius: 999px;
   cursor: pointer;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 3px 3px 0 rgba(10, 36, 56, 0.45);
 }
 
-.pill:hover { border-color: rgba(11, 31, 58, 0.6); }
+.pill:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 rgba(10, 36, 56, 0.45); }
+
+.pill:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 rgba(10, 36, 56, 0.45); }
 
 /* Modo pantalla: the sea, the depth and her story; nothing else. */
 .screen-btn { display: inline-flex; align-items: center; gap: 6px; }
 
-.screen-btn svg { color: rgba(159, 212, 228, 0.95); }
+.screen-btn svg { color: var(--cel-teal); }
+
+body.below .screen-btn svg { color: var(--cel-pale); }
 
 body.screen .top, body.screen .tools, body.screen .scrub, body.screen .hint, body.screen .about-open, body.screen .deep-bio { display: none !important; }
 
@@ -110,13 +117,17 @@ body.idle .tools, body.idle .hint { opacity: 0; pointer-events: none; }
 
 body.idle .top { opacity: 0.6; }
 
-.pill.active { border-color: rgba(159, 212, 228, 0.9); }
+.pill.active, body.below .pill.active { background: var(--cel-teal); color: var(--cel-ink); }
 
-.top, .pill { transition: color 0.8s, background-color 0.8s, border-color 0.8s; }
+.top { transition: color 0.8s; }
+
+.pill { transition: color 0.8s, background-color 0.8s, border-color 0.8s, transform 0.15s, box-shadow 0.15s; }
 
 body.below .top { color: var(--foam); text-shadow: 0 1px 10px rgba(0, 0, 0, 0.4); }
 
-body.below .pill { color: var(--foam); border-color: var(--line); background: var(--panel); }
+body.below .pill { color: var(--cel-foam); border-color: var(--cel-pale); background: var(--cel-ink); box-shadow: 3px 3px 0 rgba(158, 233, 226, 0.22); }
+
+body.below .pill:hover { box-shadow: 4px 4px 0 rgba(158, 233, 226, 0.22); }
 
 .deep {
   position: fixed;
@@ -126,6 +137,9 @@ body.below .pill { color: var(--foam); border-color: var(--line); background: va
   text-align: right;
   pointer-events: none;
   text-shadow: 0 1px 14px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 .deep-depth {
@@ -135,21 +149,46 @@ body.below .pill { color: var(--foam); border-color: var(--line); background: va
   line-height: 1;
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
+  text-shadow: 3px 3px 0 var(--cel-ink);
 }
 
 .deep-who { margin: 6px 0 0; font-family: var(--serif); font-size: 18px; color: var(--foam-soft); }
 
 .deep-story {
-  margin: 8px 0 0;
+  position: relative;
+  margin: 12px 0 0;
   margin-left: auto;
   max-width: 460px;
+  padding: 10px 16px 10px 18px;
   font-family: var(--serif);
   font-size: 17px;
   line-height: 1.3;
-  color: var(--foam);
+  color: var(--cel-foam);
+  background: var(--cel-ink);
+  border: 2px solid var(--cel-pale);
+  border-radius: 16px 16px 4px 16px;
+  box-shadow: 4px 4px 0 rgba(158, 233, 226, 0.22);
+  text-shadow: none;
+  text-align: left;
 }
 
-.deep-sub { margin: 6px 0 0; font-size: 12.5px; color: var(--foam-mute); }
+/* The card speaks: a small tail toward the whale, on the left. */
+.deep-story::before {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: 16px;
+  width: 16px;
+  height: 16px;
+  background: var(--cel-ink);
+  border-left: 2px solid var(--cel-pale);
+  border-bottom: 2px solid var(--cel-pale);
+  transform: rotate(45deg);
+}
+
+.deep-story:empty { display: none; }
+
+.deep-sub { margin: 8px 0 0; font-size: 12.5px; color: var(--foam-mute); }
 
 .deep-bio {
   margin: 10px 0 0;
@@ -161,59 +200,78 @@ body.below .pill { color: var(--foam); border-color: var(--line); background: va
 }
 
 /* Scrubber: arrows around a name, for the species on the stage and in the sheet. */
-.scrub { position: fixed; left: 16px; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 2px; transition: opacity 1.4s; }
+.scrub {
+  position: fixed;
+  left: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 3px;
+  border: 2px solid var(--cel-pale);
+  border-radius: 999px;
+  background: var(--cel-ink);
+  box-shadow: 3px 3px 0 rgba(158, 233, 226, 0.22);
+  transition: opacity 1.4s, color 0.8s, background-color 0.8s, border-color 0.8s;
+}
 
 body.idle .scrub { opacity: 0; pointer-events: none; }
 
 .scrub-btn {
   appearance: none;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--line);
+  width: 30px;
+  height: 30px;
+  border: 0;
   border-radius: 50%;
-  background: var(--panel);
-  color: var(--foam);
+  background: none;
+  color: var(--cel-pale);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  transition: background-color 0.15s;
 }
 
-.scrub-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.scrub-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
-.scrub-btn:hover { border-color: rgba(159, 212, 228, 0.9); }
+.scrub-btn:hover { background: var(--cel-teal); color: var(--cel-ink); }
 
 .scrub-label {
   appearance: none;
   border: 0;
   background: none;
-  color: var(--foam);
+  color: var(--cel-foam);
   font-family: var(--serif);
   font-size: 17px;
-  padding: 4px 10px;
-  min-width: 120px;
+  padding: 2px 10px;
+  min-width: 128px;
   text-align: center;
   cursor: pointer;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-body:not(.below) .scrub-btn { color: var(--ink); border-color: rgba(11, 31, 58, 0.25); background: rgba(255, 255, 255, 0.35); }
+.scrub-label canvas, .menu button canvas { width: 44px; height: 20px; display: block; flex: none; }
 
-body:not(.below) .scrub-label { color: var(--ink); text-shadow: none; }
+body:not(.below) .scrub { background: var(--cel-foam); border-color: var(--cel-ink); box-shadow: 3px 3px 0 rgba(10, 36, 56, 0.45); }
+
+body:not(.below) .scrub-btn { color: var(--cel-ink); }
+
+body:not(.below) .scrub-label { color: var(--cel-ink); }
 
 /* The list behind the name: every species at once, with how many whales each has. */
 .menu {
   position: absolute;
-  left: 34px;
-  bottom: 40px;
-  min-width: 230px;
+  left: 0;
+  bottom: 46px;
+  min-width: 250px;
   padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #0d2440;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  border: 2px solid var(--cel-pale);
+  border-radius: 16px;
+  background: var(--cel-ink);
+  box-shadow: 4px 4px 0 rgba(158, 233, 226, 0.22);
   z-index: 15;
 }
 
@@ -223,8 +281,8 @@ body:not(.below) .scrub-label { color: var(--ink); text-shadow: none; }
 
 .menu button {
   display: flex;
-  justify-content: space-between;
-  gap: 14px;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   appearance: none;
   border: 0;
@@ -238,9 +296,13 @@ body:not(.below) .scrub-label { color: var(--ink); text-shadow: none; }
   cursor: pointer;
 }
 
-.menu button:hover { background: rgba(159, 212, 228, 0.12); }
+.menu button:hover { background: var(--cel-teal); color: var(--cel-ink); }
 
-.menu button.active { color: rgba(159, 212, 228, 1); }
+.menu button.active { color: var(--cel-pale); }
+
+.menu button:hover span { color: var(--cel-ink); }
+
+.menu button strong { flex: 1; }
 
 .menu button span { font-family: var(--mono); font-size: 11px; color: var(--foam-mute); }
 
@@ -248,7 +310,7 @@ body:not(.below) .scrub-label { color: var(--ink); text-shadow: none; }
 
 .about-title h2 { cursor: pointer; }
 
-.about-open { margin-top: 10px; pointer-events: auto; color: var(--foam); border-color: var(--line); background: var(--panel); }
+.about-open { margin-top: 10px; pointer-events: auto; color: var(--cel-foam); border-color: var(--cel-pale); background: var(--cel-ink); box-shadow: 3px 3px 0 rgba(158, 233, 226, 0.22); }
 
 .sheet-wide { width: min(760px, 100%); }
 
@@ -335,15 +397,15 @@ body.below .hint { color: var(--foam); }
   max-height: 80vh;
   overflow: auto;
   padding: 20px 20px max(24px, env(safe-area-inset-bottom));
-  border: 1px solid var(--line);
+  border: 2px solid var(--cel-pale);
   border-bottom: 0;
   border-radius: 18px 18px 0 0;
-  background: #0d2440;
+  background: var(--cel-ink);
   color: var(--foam);
   font-size: 14px;
 }
 
-.sheet-body .pill { color: var(--foam); border-color: var(--line); background: var(--panel); }
+.sheet-body .pill { color: var(--cel-foam); border-color: var(--cel-pale); background: var(--cel-ink); box-shadow: 3px 3px 0 rgba(158, 233, 226, 0.22); }
 
 .sheet-body h2 { margin: 0 0 12px; font-family: var(--serif); font-weight: 400; font-size: 24px; }
 
@@ -366,96 +428,9 @@ body.below .hint { color: var(--foam); }
   .about-portrait { height: 120px; }
   .deep-depth { font-size: 44px; }
   .deep-bio { display: none; }
-  /* Scrubber: arrows around a name, for the species on the stage and in the sheet. */
-.scrub { position: fixed; left: 16px; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 2px; transition: opacity 1.4s; }
-
-body.idle .scrub { opacity: 0; pointer-events: none; }
-
-.scrub-btn {
-  appearance: none;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: var(--panel);
-  color: var(--foam);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.scrub-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-
-.scrub-btn:hover { border-color: rgba(159, 212, 228, 0.9); }
-
-.scrub-label {
-  appearance: none;
-  border: 0;
-  background: none;
-  color: var(--foam);
-  font-family: var(--serif);
-  font-size: 17px;
-  padding: 4px 10px;
-  min-width: 120px;
-  text-align: center;
-  cursor: pointer;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
-}
-
-body:not(.below) .scrub-btn { color: var(--ink); border-color: rgba(11, 31, 58, 0.25); background: rgba(255, 255, 255, 0.35); }
-
-body:not(.below) .scrub-label { color: var(--ink); text-shadow: none; }
-
-/* The list behind the name: every species at once, with how many whales each has. */
-.menu {
-  position: absolute;
-  left: 34px;
-  bottom: 40px;
-  min-width: 230px;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #0d2440;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  z-index: 15;
-}
-
-.menu[hidden] { display: none; }
-
-.menu-up { left: 50%; top: 48px; bottom: auto; transform: translateX(-50%); }
-
-.menu button {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  width: 100%;
-  appearance: none;
-  border: 0;
-  background: none;
-  color: var(--foam);
-  font: inherit;
-  font-size: 14px;
-  text-align: left;
-  padding: 7px 10px;
-  border-radius: 9px;
-  cursor: pointer;
-}
-
-.menu button:hover { background: rgba(159, 212, 228, 0.12); }
-
-.menu button.active { color: rgba(159, 212, 228, 1); }
-
-.menu button span { font-family: var(--mono); font-size: 11px; color: var(--foam-mute); }
-
-.about-head { position: relative; }
-
-.about-title h2 { cursor: pointer; }
-
-.about-open { margin-top: 6px; font-size: 12px; padding: 4px 10px; }
-  .deep-story { font-size: 15px; }
+  .about-open { margin-top: 6px; font-size: 12px; padding: 4px 10px; }
+  .deep-story { font-size: 15px; padding: 8px 12px 8px 14px; }
+  .deep-depth { text-shadow: 2px 2px 0 var(--cel-ink); }
   .hint { display: none; }
   .about-portrait { height: 110px; }
   .about-head { flex-direction: column; align-items: flex-start; gap: 6px; }
@@ -474,5 +449,5 @@ body:not(.below) .scrub-label { color: var(--ink); text-shadow: none; }
   .sheet { align-items: center; }
   .about-cols { grid-template-columns: 300px 1fr; gap: 24px; }
   .sheet-wide { width: min(820px, 100%); }
-  .sheet-body { border-bottom: 1px solid var(--line); border-radius: 18px; }
+  .sheet-body { border-bottom: 2px solid var(--cel-pale); border-radius: 18px; box-shadow: 6px 6px 0 rgba(158, 233, 226, 0.18); }
 }

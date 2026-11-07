@@ -184,8 +184,22 @@
   var chosenKind = null;
   function kindList() { return [null].concat(Sea.kinds()); }
   function kindName(kind) { return t(kind ? "kind_" + kind : "kind_all"); }
+  // A small silhouette of the species, drawn with the 2D shapes in the panel's colours.
+  function silhouette(kind, w, h, color) {
+    var c = document.createElement("canvas"), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    c.width = w * dpr; c.height = h * dpr;
+    if (!kind || !window.Whales) return c;
+    var ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var s = Math.min(w / 100 * 0.92, h / 44 * 0.95) * (kind === "narwhal" ? 0.8 : 1);
+    ctx.translate(w / 2 + (kind === "narwhal" ? w * 0.06 : 0), h / 2 + 1); ctx.scale(s, s);
+    Whales.draw(ctx, kind, { shade: [color, color, color, color, color, color], t: 0, speed: 0, flat: true, seam: 0 });
+    return c;
+  }
   function renderSpecies() {
-    document.getElementById("species-label").textContent = kindName(chosenKind);
+    var el = document.getElementById("species-label");
+    el.innerHTML = "";
+    if (chosenKind) el.appendChild(silhouette(chosenKind, 44, 20, "currentColor"));
+    el.appendChild(document.createTextNode(kindName(chosenKind)));
   }
   function stepSpecies(dir) {
     var list = kindList(), i = list.indexOf(chosenKind);
@@ -207,7 +221,7 @@
       label.textContent = id === "species-menu" ? kindName(k) : t("sp_" + k + "_name");
       var n = document.createElement("span");
       n.textContent = k ? fmt(countOf(k)) : fmt(data.whales.length);
-      b.appendChild(label); b.appendChild(n);
+      b.appendChild(silhouette(k, 44, 20, k === current ? "#9ee9e2" : "#eaf7f6")); b.appendChild(label); b.appendChild(n);
       b.addEventListener("click", function (e) { e.stopPropagation(); m.hidden = true; onPick(k); });
       m.appendChild(b);
     });
@@ -359,7 +373,7 @@
 
   start();
   // The 3D models, credited by title, author and licence.
-  fetch("models/manifest.json?v=38").then(function (r) { return r.json(); }).then(function (man) {
+  fetch("models/manifest.json?v=39").then(function (r) { return r.json(); }).then(function (man) {
     var ul = document.getElementById("credits-models"), seen = {};
     if (!ul) return;
     Object.keys(man).forEach(function (k) {
