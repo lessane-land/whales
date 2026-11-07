@@ -14,28 +14,38 @@ const flags = new Set([...p.keys(), ...location.hash.replace("#", "").split("-")
 const NIGHT = flags.has("night"), DEEP = flags.has("deep"), DIVE = flags.has("dive"), BOLD = flags.has("bold");
 addEventListener("hashchange", () => location.reload());
 
-// Ramps, dark to lit. Night and deep dim them toward ink.
-const dim = DEEP ? 0.42 : NIGHT ? 0.5 : 1;
-const ramp = (...hex) => hex.map(h => new THREE.Color(h).lerp(new THREE.Color(0x061427), 1 - dim));
-const R = {
-  back: ramp(0x08182e, 0x0b1f3a, 0x12305a, 0x1a4680),
-  flank: ramp(0x12305a, 0x1a4680, 0x245ea0, 0x2f74b8),
-  belly: ramp(0x4a8fc8, 0x7fb8dc, 0xb8e4f4, 0xffffff),
-  floor: ramp(0x071a30, 0x0a2240, 0x0e2c50, 0x123660),
-  rock: ramp(0x061427, 0x0b2240, 0x11315a, 0x18417a),
-  near: ramp(0x040d1c, 0x061427, 0x0b2240, 0x0f2d4e),
-  ridge: ramp(0x1a5080, 0x1d568a, 0x205c94, 0x24629c),
-  surface: ramp(0x4fa8dc, 0x6cc0ea, 0x8fd0ee, 0xb8e4f4),
-  kelp: ramp(0x0d4a3e, 0x126354, 0x1a7f6a, 0x2a9a82),
-  fish: ramp(0x8fd0ee, 0xbfe6f5, 0xffffff, 0xffffff)
+// Palettes. The Buff brief: teal going darker as you go down, light in stripes, one huge whale close.
+// ?pal=blue keeps the cobalt version. Night and deep dim every ramp toward ink.
+const PALS = {
+  teal: {
+    ink: 0x05161f,
+    back: [0x071d2a, 0x0b2f40, 0x0f4a5c, 0x146878], flank: [0x0f4a5c, 0x147a86, 0x1aa3a8, 0x2fc9c2], belly: [0x5fd8d0, 0x9ee9e2, 0xd8f6f2, 0xffffff],
+    floor: [0x061a26, 0x082432, 0x0b3040, 0x0e3a4c], rock: [0x05141e, 0x08202c, 0x0c2e3c, 0x12404e], near: [0x030c14, 0x05141e, 0x08202c, 0x0b2a38],
+    ridge: [0x0f5668, 0x115c70, 0x136278, 0x166a80], surface: [0x2fc9c2, 0x5fd8d0, 0x9ee9e2, 0xd8f6f2], kelp: [0x0b4a44, 0x0f6a5c, 0x178a74, 0x22a88a], fish: [0x9ee9e2, 0xd8f6f2, 0xffffff, 0xffffff],
+    water: { day: [[0, [63, 214, 207]], [.18, [26, 163, 168]], [.45, [16, 110, 132]], [.8, [10, 58, 86]], [1, [7, 30, 52]]], night: [[0, [18, 72, 86]], [.3, [10, 44, 62]], [.7, [5, 18, 32]], [1, [3, 8, 16]]], deep: [[0, [8, 36, 52]], [.5, [5, 20, 34]], [1, [2, 8, 16]]] },
+    sky: ["#eef9f8", "#bfe9e6"], mount: ["#9edbd6", "#72c3c0", "#4fa8aa"], coral: 0xff7a59, teal: 0x7fe8c8
+  },
+  blue: {
+    ink: 0x061427,
+    back: [0x08182e, 0x0b1f3a, 0x12305a, 0x1a4680], flank: [0x12305a, 0x1a4680, 0x245ea0, 0x2f74b8], belly: [0x4a8fc8, 0x7fb8dc, 0xb8e4f4, 0xffffff],
+    floor: [0x071a30, 0x0a2240, 0x0e2c50, 0x123660], rock: [0x061427, 0x0b2240, 0x11315a, 0x18417a], near: [0x040d1c, 0x061427, 0x0b2240, 0x0f2d4e],
+    ridge: [0x1a5080, 0x1d568a, 0x205c94, 0x24629c], surface: [0x4fa8dc, 0x6cc0ea, 0x8fd0ee, 0xb8e4f4], kelp: [0x0d4a3e, 0x126354, 0x1a7f6a, 0x2a9a82], fish: [0x8fd0ee, 0xbfe6f5, 0xffffff, 0xffffff],
+    water: { day: [[0, [63, 180, 224]], [.2, [38, 136, 196]], [.5, [24, 90, 150]], [.85, [14, 46, 92]], [1, [8, 26, 54]]], night: [[0, [20, 52, 84]], [.3, [10, 30, 56]], [.7, [4, 12, 28]], [1, [2, 6, 14]]], deep: [[0, [8, 30, 56]], [.5, [4, 16, 34]], [1, [2, 8, 18]]] },
+    sky: ["#eef6f9", "#bfe0ee"], mount: ["#a9d2e3", "#86bdd4", "#63a3c2"], coral: 0xff7a59, teal: 0x4fd6b4
+  }
 };
-const CORAL = new THREE.Color(0xff7a59).lerp(new THREE.Color(0x061427), 1 - Math.max(dim, 0.7)), TEAL = new THREE.Color(0x4fd6b4).lerp(new THREE.Color(0x061427), 1 - Math.max(dim, 0.7));
+const P = PALS[p.get("pal")] || PALS.teal;
+const dim = DEEP ? 0.42 : NIGHT ? 0.5 : 1;
+const INK = new THREE.Color(P.ink);
+const ramp = hex => hex.map(h => new THREE.Color(h).lerp(INK, 1 - dim));
+const R = {}; for (const k of ["back", "flank", "belly", "floor", "rock", "near", "ridge", "surface", "kelp", "fish"]) R[k] = ramp(P[k]);
+const CORAL = new THREE.Color(P.coral).lerp(INK, 1 - Math.max(dim, 0.7)), TEAL = new THREE.Color(P.teal).lerp(INK, 1 - Math.max(dim, 0.7));
 const L = new THREE.Vector3(-0.35, 1, 0.6).normalize();
 let seed = 3; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
 
 // Bake: one colour per triangle from its normal. pick(cx, cy, cz, i) chooses the ramp per face.
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _n = new THREE.Vector3();
-function bake(geo, pick, jitter = 0.06, bias = 0) {
+function bake(geo, pick, jitter = 0.06, bias = 0, hue = 0) {
   const g = geo.index ? geo.toNonIndexed() : geo;
   for (const k of Object.keys(g.attributes)) if (k !== "position" && k !== "uv") g.deleteAttribute(k);
   const pos = g.attributes.position, n = pos.count, col = g.attributes.color ? g.attributes.color.array : new Float32Array(n * 3);
@@ -46,6 +56,7 @@ function bake(geo, pick, jitter = 0.06, bias = 0) {
     const r = pick((_a.x + _b.x + _c.x) / 3, (_a.y + _b.y + _c.y) / 3, (_a.z + _b.z + _c.z) / 3, i / 3);
     let step = BOLD ? (shade < 0.5 ? 0 : 3) : Math.floor(shade * r.length); if (rnd() < 0.08) step = THREE.MathUtils.clamp(step + (rnd() < .5 ? -1 : 1), 0, r.length - 1);
     const c = r[step].clone(); const j = (rnd() - .5) * jitter; c.r += j; c.g += j; c.b += j;
+    if (hue) { const hsl = {}; c.getHSL(hsl); c.setHSL(hsl.h + (rnd() - .5) * hue, hsl.s, hsl.l); }
     for (let k = 0; k < 3; k++) { col[(i + k) * 3] = c.r; col[(i + k) * 3 + 1] = c.g; col[(i + k) * 3 + 2] = c.b; }
   }
   if (!g.attributes.color) g.setAttribute("color", new THREE.BufferAttribute(col, 3)); else g.attributes.color.needsUpdate = true;
@@ -68,7 +79,7 @@ const sy = DEEP ? -10 : toScreen(new THREE.Vector3(0, SURF, -34)).y;
 function rgb(c, a = 1) { return `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`; }
 (function paintBack() {
   if (!DEEP) {
-    const sky = NIGHT ? ["#0a1222", "#10203a"] : ["#eef6f9", "#bfe0ee"], mount = NIGHT ? ["#182a44", "#121f36", "#0d172a"] : ["#a9d2e3", "#86bdd4", "#63a3c2"];
+    const sky = NIGHT ? ["#0a1222", "#10203a"] : P.sky, mount = NIGHT ? ["#182a44", "#121f36", "#0d172a"] : P.mount;
     const g = bctx.createLinearGradient(0, 0, 0, sy); g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1]); bctx.fillStyle = g; bctx.fillRect(0, 0, W, sy);
     if (NIGHT) { seed = 77; bctx.fillStyle = "rgba(255,250,235,.8)"; for (let i = 0; i < 90; i++) { bctx.beginPath(); bctx.arc(rnd() * W, rnd() * sy * .7, .6 + rnd(), 0, 6.28); bctx.fill(); } }
     bctx.fillStyle = NIGHT ? "rgba(220,230,240,.9)" : "#fff6dc"; bctx.beginPath(); bctx.arc(W * (NIGHT ? .72 : .5), sy * .5, sy * (NIGHT ? .2 : .36), 0, 6.28); bctx.fill();
@@ -78,9 +89,7 @@ function rgb(c, a = 1) { return `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`
       bctx.lineTo(W, sy); bctx.closePath(); bctx.fill();
     });
   }
-  const water = DEEP ? [[0, [8, 30, 56]], [.5, [4, 16, 34]], [1, [2, 8, 18]]]
-    : NIGHT ? [[0, [20, 52, 84]], [.3, [10, 30, 56]], [.7, [4, 12, 28]], [1, [2, 6, 14]]]
-    : [[0, [63, 180, 224]], [.2, [38, 136, 196]], [.5, [24, 90, 150]], [.85, [14, 46, 92]], [1, [8, 26, 54]]];
+  const water = DEEP ? P.water.deep : NIGHT ? P.water.night : P.water.day;
   const wg = bctx.createLinearGradient(0, Math.max(0, sy), 0, H); water.forEach(s => wg.addColorStop(s[0], rgb(s[1])));
   bctx.fillStyle = wg; bctx.fillRect(0, Math.max(0, sy), W, H);
 })();
@@ -110,10 +119,10 @@ function wedge(wTop, wBottom, h) {
 }
 const rays = new THREE.Group(); seed = 11;
 const RAY_A = NIGHT ? 0.07 : 0.13;
-for (let i = 0; i < (DEEP ? 0 : 10); i++) {
-  const w = 1 + rnd() * 2.5 + (rnd() < .25 ? 4 : 0), h = 28;
-  const m = new THREE.Mesh(wedge(w, w * 2.2, h), new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: RAY_A * (0.6 + rnd() * 0.6), blending: THREE.AdditiveBlending, depthWrite: false }));
-  m.position.set(-56 + rnd() * 112, SURF - 0.2, -30 + rnd() * 22); m.rotation.z = 0.14 + (rnd() - .5) * 0.08;
+for (let i = 0; i < (DEEP ? 0 : 14); i++) {
+  const w = 0.8 + rnd() * 2.2 + (rnd() < .3 ? 5 : 0), h = 30;
+  const m = new THREE.Mesh(wedge(w, w * 1.15, h), new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: RAY_A * (0.6 + rnd() * 0.6), blending: THREE.AdditiveBlending, depthWrite: false }));
+  m.position.set(-56 + rnd() * 112, SURF - 0.2, -30 + rnd() * 22); m.rotation.z = 0.05 + (rnd() - .5) * 0.04;
   m.userData = { x: m.position.x, z0: m.rotation.z, k: 0.4 + rnd() * 0.6, a: m.material.opacity };
   rays.add(m);
 }
@@ -144,8 +153,15 @@ const reefY = x => (x < -18 ? Math.min(9, (-18 - x) * 0.4) : 0);
   const ridge = new THREE.Mesh(bake(rg, () => R.ridge, 0.02, -0.3), paper()); ridge.position.z = -78; scene.add(ridge);
   [[-30, 34, 7], [36, 30, 5.5]].forEach(([x, z, r]) => { const fr = new THREE.Mesh(bake(new THREE.IcosahedronGeometry(r, 0), () => R.near, 0.03), paper()); fr.position.set(x, FLOOR - 4, z); fr.rotation.set(0.4, 0.8, 0.2); fr.scale.set(1.4, 0.8, 1); scene.add(fr); });
 })();
+// Pillars: tall angular rock, the walls of the place.
+seed = 19;
+[[-34, -40, 11, 2.6], [-27, -30, 7, 2.0], [38, -36, 9, 2.4], [31, -26, 5, 1.8]].forEach(([x, z, h, r]) => {
+  const g = new THREE.CylinderGeometry(r * 0.6, r, h, 5, 1); g.translate(0, h / 2, 0);
+  const pos = g.attributes.position; for (let i = 0; i < pos.count; i++) pos.setX(i, pos.getX(i) + (rnd() - .5) * r * 0.5), pos.setZ(i, pos.getZ(i) + (rnd() - .5) * r * 0.5);
+  const m = new THREE.Mesh(bake(g, () => R.rock, 0.05, -0.1), paper()); m.position.set(x, FLOOR - 1 + reefY(x), z); m.rotation.y = rnd() * 3; scene.add(m);
+});
 seed = 8;
-for (let i = 0; i < 14; i++) {
+for (let i = 0; i < 9; i++) {
   const r = 1.2 + rnd() * 3.2, m = new THREE.Mesh(bake(new THREE.IcosahedronGeometry(r, 0), () => R.rock, 0.05), paper());
   const x = -60 + rnd() * 120; m.position.set(x, FLOOR - 0.6 + reefY(x) + r * 0.3, -46 + rnd() * 36);
   m.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3); m.scale.set(1 + rnd() * 0.8, 0.6 + rnd() * 0.5, 1 + rnd() * 0.6); scene.add(m);
@@ -203,7 +219,7 @@ new GLTFLoader().load("../models/humpback.glb", gltf => {
   }
   geo = geo.index ? geo.toNonIndexed() : geo;
   geo.computeBoundingBox(); const b = geo.boundingBox, size = new THREE.Vector3(); b.getSize(size); const c = new THREE.Vector3(); b.getCenter(c);
-  geo.translate(-c.x, -c.y, -c.z); geo.scale(17 / size.x, 17 / size.x, 17 / size.x); geo.computeBoundingBox();
+  geo.translate(-c.x, -c.y, -c.z); geo.scale(22 / size.x, 22 / size.x, 22 / size.x); geo.computeBoundingBox();
   const lo = geo.boundingBox.min, hi = geo.boundingBox.max;
   seed = 9;
   bake(geo, (x, y, z) => {
@@ -212,7 +228,7 @@ new GLTFLoader().load("../models/humpback.glb", gltf => {
     if (up > 0.5) return R.back;
     if (up > 0.3) return R.flank;
     return R.belly;
-  }, 0.03, -0.1);
+  }, 0.03, -0.1, 0.05);
   whaleMat = paper();
   whaleMat.onBeforeCompile = sh => {
     sh.uniforms.uTime = { value: 0 }; whaleMat.userData.sh = sh;
@@ -223,8 +239,13 @@ new GLTFLoader().load("../models/humpback.glb", gltf => {
         transformed.y += sin(uTime * 1.6 - transformed.x * 0.35 + 1.2) * 0.35 * tail * tail;`);
   };
   whale.add(new THREE.Mesh(geo, whaleMat));
+  // A cartoon eye: a pale disc with a dark pupil, on the near side of the head.
+  const eye = new THREE.Group();
+  eye.add(new THREE.Mesh(new THREE.CircleGeometry(0.42, 12), new THREE.MeshBasicMaterial({ color: 0xf2fbfa })));
+  const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.2, 10), new THREE.MeshBasicMaterial({ color: P.ink })); pupil.position.set(0.06, 0.02, 0.01); eye.add(pupil);
+  eye.position.set(-7.2, -0.9, 1.95); eye.rotation.y = 0.5; whale.add(eye);
   whale.rotation.set(0, DIVE ? 0.3 : 0.42, DIVE ? 0.95 : 0);
-  whale.position.set(DIVE ? -2 : -5, DIVE ? -7 : -5.5, 0);
+  whale.position.set(DIVE ? -1 : -4, DIVE ? -6 : -5, 0);
 }, undefined, e => console.error("load failed", e));
 
 // Animation.
