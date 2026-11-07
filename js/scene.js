@@ -42,8 +42,8 @@ function bendShader(sh) {
       // A slow wave travels down the body: nothing at the head, a little past the dorsal, most at the fluke.
       // uEnv is the stroke envelope: whales stroke a few times, then glide.
       float along = clamp((transformed.x + 0.5), 0.0, 1.0);
-      float amp = (0.0015 + 0.03 * pow(max(0.0, along - 0.5) / 0.5, 2.6)) * uEnv;
-      float ph = uTime * 1.15 * uBeat - transformed.x * 5.5 + uPhase;
+      float amp = (0.001 + 0.024 * pow(max(0.0, along - 0.5) / 0.5, 2.8)) * uEnv;
+      float ph = uTime * 1.0 * uBeat - transformed.x * 5.0 + uPhase;
       transformed.z += sin(ph) * amp;
       transformed.y += sin(ph + 1.3) * amp * 0.4;
       // The fluke feathers a touch against the stroke.
@@ -56,10 +56,15 @@ function bendShader(sh) {
 function build(kind, geo) {
   const g = new THREE.Group();
   const [bk, fl, be] = (PAL[kind] || PAL.sperm).map(h => new THREE.Color(h));
-  geo = geo.clone(); geo.computeBoundingBox();
+  geo = geo.clone();
+  // The fin whale shows her right side, the white jaw side: mirror the model and keep the winding.
+  if (kind === "fin") { const p0 = geo.attributes.position; for (let i = 0; i < p0.count; i += 3) { p0.setZ(i, -p0.getZ(i)); p0.setZ(i + 1, -p0.getZ(i + 1)); p0.setZ(i + 2, -p0.getZ(i + 2)); const x1 = p0.getX(i + 1), y1 = p0.getY(i + 1), z1 = p0.getZ(i + 1); p0.setXYZ(i + 1, p0.getX(i + 2), p0.getY(i + 2), p0.getZ(i + 2)); p0.setXYZ(i + 2, x1, y1, z1); } geo.computeVertexNormals(); }
+  geo.computeBoundingBox();
   const lo = geo.boundingBox.min, hi = geo.boundingBox.max, pos = geo.attributes.position, cols = new Float32Array(pos.count * 3);
+  const hash = (x, y, z) => { const v = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return v - Math.floor(v); };
+  const dark = bk.clone().lerp(new THREE.Color(INK), 0.35), cream = new THREE.Color(0xf1e9d8);
   for (let i = 0; i < pos.count; i++) {
-    const up = (pos.getY(i) - lo.y) / (hi.y - lo.y), side = Math.abs(pos.getZ(i)) / ((hi.z - lo.z) / 2);
+    const x = pos.getX(i), z = pos.getZ(i), up = (pos.getY(i) - lo.y) / (hi.y - lo.y), side = Math.abs(z) / ((hi.z - lo.z) / 2);
     let c;
     if (side > 0.42 && up < 0.6) c = be;
     else if (up > 0.62) c = bk;
@@ -67,6 +72,28 @@ function build(kind, geo) {
     else if (up > 0.3) c = fl;
     else if (up > 0.22) c = fl.clone().lerp(be, (0.3 - up) / 0.08);
     else c = be;
+    // Species marks.
+    if (kind === "pilot") {
+      // Near black all over; only a narrow pale anchor on the throat and a faint saddle behind the dorsal.
+      if (side > 0.42) c = fl;
+      else if (up < 0.14 && x < 0.02 && x > -0.42) c = be;
+      else if (up < 0.3) c = fl;
+      else if (up > 0.6 && x > 0.02 && x < 0.2) c = fl.clone().lerp(be, 0.2);
+    } else if (kind === "fin") {
+      // The right lower jaw and the front of the throat are white; a pale chevron sweeps back from the blowhole.
+      const near = z > 0;
+      if (near && x < -0.3 && up < 0.42) c = be;
+      if (near && x > -0.3 && x < -0.05 && up > 0.45 && up < 0.6 && Math.abs((up - 0.52) - (x + 0.3) * 0.3) < 0.05) c = fl.clone().lerp(be, 0.45);
+    } else if (kind === "cuvier") {
+      // A pale head, as the adult males wear, and long pale scratches down the flank.
+      if (x < -0.3) c = cream.clone().lerp(c, Math.max(0, (x + 0.42) / 0.12));
+      else if (up > 0.35 && hash(Math.round(x * 60), Math.round(up * 8), 0) < 0.12) c = c.clone().lerp(cream, 0.45);
+    } else if (kind === "narwhal" || kind === "blue") {
+      // Mottled backs: dark flecks on the narwhal, paler on the blue.
+      if (up > 0.4 && hash(Math.round(x * 90), Math.round(up * 30), Math.round(z * 90)) < (kind === "narwhal" ? 0.3 : 0.18)) c = c.clone().lerp(kind === "narwhal" ? dark : be, kind === "narwhal" ? 0.6 : 0.3);
+    } else if (kind === "beluga") {
+      c = up > 0.7 ? be.clone().lerp(fl, 0.3) : be;
+    }
     cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
   }
   geo.setAttribute("color", new THREE.BufferAttribute(cols, 3));
@@ -97,6 +124,12 @@ function build(kind, geo) {
     tube(pts, 0.0018, INK, { transparent: true, opacity: 0.5 });
   }
   if (kind === "humpback") for (const z of [0, 0.025, -0.025]) for (let x = -0.47; x <= -0.31; x += 0.027) { const h = skin(new THREE.Vector3(x, 2, z), new THREE.Vector3(0, -1, 0)); if (h) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.005, 6, 5), new THREE.MeshBasicMaterial({ color: INK })); b.position.copy(h.p); b.userData.detail = true; g.add(b); } }
+  // Blainville's: the two teeth of the males stand up from the arched lower jaw, one each side.
+  if (kind === "blainville") for (const sign of [1, -1]) {
+    const h = around(-0.3, 22); if (!h) continue;
+    const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.03, 6), new THREE.MeshBasicMaterial({ color: 0xf1e9d8 }));
+    tooth.position.set(h.p.x, h.p.y + 0.012, h.p.z * sign); tooth.rotation.z = -0.25; tooth.userData.detail = true; g.add(tooth);
+  }
   // The eye.
   const e = EYE[kind] || EYE.sperm, esp = span(e[0]), ey = esp ? esp.bot + (esp.top - esp.bot) * e[1] : 0;
   const hit = skin(new THREE.Vector3(e[0], ey, 2), new THREE.Vector3(0, 0, -1));
@@ -222,9 +255,9 @@ window.Scene = {
       if (u.px === undefined) { u.px = r.x; u.py = r.y; u.pitch = r.pitch; u.bank = 0; u.yaw = r.flat ? 0.1 : 0.36; u.phase = (r.id.length * 1.7) % 6.28; }
       const dx = r.x - u.px, dy = r.y - u.py; u.px = r.x; u.py = r.y;
       u.pitch += (r.pitch - u.pitch) * 0.12;
-      const bankTarget = Math.max(-0.22, Math.min(0.22, dx * 0.05)) + (r.flat ? 0 : Math.sin(t * 0.17 + u.phase) * 0.03);
+      const bankTarget = Math.max(-0.16, Math.min(0.16, dx * 0.04)) + (r.flat ? 0 : Math.sin(t * 0.13 + u.phase) * 0.02);
       u.bank += (bankTarget - u.bank) * 0.025;
-      const yawTarget = r.flat ? 0.1 : 0.36 + Math.sin(t * 0.07 + u.phase) * 0.06 + Math.max(-0.15, Math.min(0.15, -dx * 0.02));
+      const yawTarget = r.flat ? 0.1 : 0.36 + Math.sin(t * 0.05 + u.phase) * 0.04 + Math.max(-0.12, Math.min(0.12, -dx * 0.015));
       u.yaw += (yawTarget - u.yaw) * 0.02;
       g.position.set(r.x, -r.y, r.flat ? -20 : 0);
       g.scale.setScalar(len);
@@ -240,7 +273,7 @@ window.Scene = {
       }
       g.visible = true; seen[r.id + (r.flat ? ":flat" : "")] = 1;
       // Stroke, then glide: the envelope rises for a few beats and settles; a resting whale barely moves.
-      const sp = r.speed || 0, beat = 0.6 + sp * 0.7;
+      const sp = r.speed || 0, beat = 0.55 + sp * 0.6;
       const cyc = Math.sin(t * 0.3 + u.phase * 0.7), env = (0.25 + 0.75 * Math.max(0, Math.min(1, cyc * 2 + 0.5))) * (0.35 + 0.65 * Math.min(1, sp * 3));
       u.env = u.env === undefined ? env : u.env + (env - u.env) * 0.03;
       (u.shaders || []).forEach(sh => { sh.uniforms.uBeat.value = beat; sh.uniforms.uPhase.value = u.phase; sh.uniforms.uEnv.value = u.env; });
@@ -257,4 +290,4 @@ window.Scene = {
   }
 };
 
-Scene.init(document.getElementById("gl"), "models/manifest.json?v=41");
+Scene.init(document.getElementById("gl"), "models/manifest.json?v=42");

@@ -100,7 +100,8 @@
   function kidLine(hero) {
     var d = Math.round(hero.cur);
     if (d < 8) return t("kid_surface");
-    var s = d >= 330 ? t("kid_depth_towers", { n: fmt(Math.round(d / 330 * 10) / 10) }) : t("kid_depth_floors", { n: fmt(Math.max(1, Math.round(d / 3))) });
+    var towers = Math.round(d / 330 * 10) / 10, floors = Math.max(1, Math.round(d / 3));
+    var s = d >= 330 ? (towers === 1 ? t("kid_depth_tower") : t("kid_depth_towers", { n: fmt(towers) })) : (floors === 1 ? t("kid_depth_floor") : t("kid_depth_floors", { n: fmt(floors) }));
     var under = Math.round(Sea.underFor(hero) / 60);
     return s + (under >= 2 ? t("kid_breath", { n: fmt(under) }) : t("kid_breath_short"));
   }
@@ -257,7 +258,7 @@
       data = d;
       d.whales.forEach(function (w) { byId[w.id] = w; });
       var q = new URLSearchParams(location.search);
-      if (window.Globe) Globe.init(document.getElementById("globe"), "data/land.json?v=41");
+      if (window.Globe) Globe.init(document.getElementById("globe"), "data/land.json?v=42");
       Sea.init(document.getElementById("sea"), d, {
         whale: q.get("whale"), at: q.has("at") ? parseFloat(q.get("at")) : undefined, gallery: q.has("gallery"),
         onTick: onTick,
@@ -389,7 +390,7 @@
 
   start();
   // The 3D models, credited by title, author and licence.
-  fetch("models/manifest.json?v=41").then(function (r) { return r.json(); }).then(function (man) {
+  fetch("models/manifest.json?v=42").then(function (r) { return r.json(); }).then(function (man) {
     var ul = document.getElementById("credits-models"), seen = {};
     if (!ul) return;
     Object.keys(man).forEach(function (k) {

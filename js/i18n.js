@@ -111,8 +111,8 @@ window.STRINGS = {
     // The globe and the kids.
     place_gulf: "Golfo de California, México", place_california: "Frente al sur de California", place_bahamas: "Canales de las Bahamas", place_beaufort: "Mar de Beaufort, Ártico canadiense", place_greenland: "Scoresby Sund, este de Groenlandia", place_stellwagen: "Banco de Stellwagen, Massachusetts",
     place_tagged: "Marcada aquí", place_approx: "Marcada por aquí",
-    kid_depth_floors: "Está tan hondo como un edificio de {n} plantas",
-    kid_depth_towers: "Está tan hondo como {n} torres Eiffel puestas una sobre otra",
+    kid_depth_floors: "Está tan hondo como un edificio de {n} plantas", kid_depth_floor: "Está tan hondo como un edificio de una planta",
+    kid_depth_towers: "Está tan hondo como {n} torres Eiffel puestas una sobre otra", kid_depth_tower: "Está tan hondo como una torre Eiffel entera",
     kid_breath: " y lleva {n} minutos sin respirar. Tú aguantas uno, como mucho.",
     kid_breath_short: " y acaba de coger aire.",
     kid_surface: "Está arriba, respirando, como tú después de bucear en la piscina.",
@@ -298,8 +298,8 @@ window.STRINGS = {
     // The globe and the kids.
     place_gulf: "Gulf of California, Mexico", place_california: "Off Southern California", place_bahamas: "Channels of the Bahamas", place_beaufort: "Beaufort Sea, Canadian Arctic", place_greenland: "Scoresby Sound, East Greenland", place_stellwagen: "Stellwagen Bank, Massachusetts",
     place_tagged: "Tagged here", place_approx: "Tagged around here",
-    kid_depth_floors: "She is as deep as a building {n} floors tall",
-    kid_depth_towers: "She is as deep as {n} Eiffel Towers stacked up",
+    kid_depth_floors: "She is as deep as a building {n} floors tall", kid_depth_floor: "She is as deep as a one floor building",
+    kid_depth_towers: "She is as deep as {n} Eiffel Towers stacked up", kid_depth_tower: "She is as deep as a whole Eiffel Tower",
     kid_breath: " and has not breathed for {n} minutes. You last one, at most.",
     kid_breath_short: " and just took a breath.",
     kid_surface: "She is up top, breathing, like you after diving in the pool.",
